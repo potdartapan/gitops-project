@@ -1,0 +1,65 @@
+name: Infrastructure Manager
+
+on:
+  workflow_dispatch:
+    inputs:
+      action:
+        description: 'Terraform Action'
+        required: true
+        default: 'apply'
+        type: choice
+        options:
+        - apply
+        - destroy
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  manage-infra:
+    runs-on: ubuntu-latest
+    env:
+      ARM_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+      ARM_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
+      ARM_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+      ARM_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+      RESOURCE_GROUP: "devops-portfolio-rg"
+      CLUSTER_NAME: "devops-portfolio-aks"
+    
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v3
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v2
+
+      # 1. BUILD OR DESTROY INFRASTRUCTURE
+      - name: Terraform Run
+        working-directory: ./terraform
+        run: |
+          terraform init
+          terraform ${{ github.event.inputs.action }} -auto-approve
+
+      # 2. INSTALL ARGO CD (Only runs if we just applied infrastructure)
+      - name: Bootstrap Cluster
+        if: ${{ github.event.inputs.action == 'apply' }}
+        run: |
+          # Login to Azure to get credentials for the NEW cluster
+          az login --service-principal -u $ARM_CLIENT_ID -p $ARM_CLIENT_SECRET --tenant $ARM_TENANT_ID
+          az aks get-credentials --resource-group $RESOURCE_GROUP --name $CLUSTER_NAME --overwrite-existing
+
+          # Install Argo CD via Helm
+          helm repo add argo https://argoproj.github.io/argo-helm
+          helm repo update
+          helm upgrade --install argocd argo/argo-cd \
+            --namespace argocd \
+            --create-namespace \
+            --version 5.46.7 \
+            --set server.service.type=LoadBalancer \
+            --set server.insecure=true \
+            --wait
+
+          # Apply the "Master Manifests" to start the sync
+          kubectl apply -f k8s/postgres.yaml
+          kubectl apply -f k8s/argocd-app.yaml

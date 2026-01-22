@@ -1,0 +1,55 @@
+name: Application CI (GitOps)
+
+on:
+  push:
+    branches: [ "main" ]
+    paths-ignore:
+      - 'terraform/**'
+      - 'k8s/**' # Don't loop! If we change k8s files, don't trigger a build.
+
+jobs:
+  build-and-update-git:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # REQUIRED: Allows the Action to push commits to your repo
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v3
+
+      # 1. Docker Build & Push (Use the Commit SHA as the tag)
+      - name: Login to Docker Hub
+        uses: docker/login-action@v2
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Build and Push
+        uses: docker/build-push-action@v4
+        with:
+          context: ./app
+          push: true
+          # We push the SHA specific tag
+          tags: ${{ secrets.DOCKERHUB_USERNAME }}/todo-app:${{ github.sha }}
+
+      # 2. Update values.yaml (The "GitOps" Step)
+      # We use 'yq' (a lightweight YAML processor) to edit the file safely
+      - name: Update Image Tag in Helm
+        uses: mikefarah/yq@master
+        with:
+          cmd: yq -i '.image.tag = "${{ github.sha }}"' 'k8s/todo-app/values.yaml'
+
+      # 3. Commit and Push the Change back to Repo
+      - name: Commit and Push Changes
+        run: |
+          git config --global user.name "GitHub Actions"
+          git config --global user.email "actions@github.com"
+          
+          # Check if there are changes (to avoid empty commit errors)
+          if [[ -n $(git status -s) ]]; then
+            git add k8s/todo-app/values.yaml
+            git commit -m "Update image tag to ${{ github.sha }}"
+            git push
+          else
+            echo "No changes to commit."
+          fi
