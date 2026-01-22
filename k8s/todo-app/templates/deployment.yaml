@@ -29,12 +29,12 @@ spec:
             requests:
               cpu: "100m"
               memory: "128Mi"
-            env:
-            - name: DB_HOST
-              value: "postgres-postgresql" # The K8s Service Name
-            - name: DB_NAME
-              value: "tododb"
-            - name: DB_USER
-              value: "postgres"
-            - name: DB_PASSWORD
-            value: "mysecretpassword" # Matches the value in postgres.yaml
+          env:
+           - name: DB_HOST
+             value: "postgres-postgresql" # The K8s Service Name
+           - name: DB_NAME
+             value: "tododb"
+           - name: DB_USER
+             value: "postgres"
+           - name: DB_PASSWORD
+             value: "mysecretpassword" # Matches the value in postgres.yaml

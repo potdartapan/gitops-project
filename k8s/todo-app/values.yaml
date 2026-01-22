@@ -1,33 +1,10 @@
-# k8s/todo-app/values.yaml
-
 replicaCount: 1
 
 image:
-  # PASTE YOUR ACR LOGIN SERVER BELOW (Keep the /todo-app part)
-  repository: REPLACE_WITH_YOUR_ACR_LOGIN_SERVER/todo-app
+  repository: potdartapan/todo-app  # Your DockerHub Username
   pullPolicy: Always
-  tag: "v1"
+  tag: "latest" # Will be overridden by GitHub Actions
 
 service:
-  type: LoadBalancer  # <--- Critical: This gives us a Public IP
-  port: 80            # The port you want to expose to the world
-  targetPort: 3000    # The port your App listens on (Check your Dockerfile!)
-
-# Resource Limits (Best Practice: Don't let one app crash the server)
-resources:
-  limits:
-    cpu: 250m
-    memory: 256Mi
-  requests:
-    cpu: 100m
-    memory: 128Mi
-
-# We don't need these yet, so we disable them to keep it simple
-serviceAccount:
-  create: false
-
-autoscaling:
-  enabled: false
-
-ingress:
-  enabled: false
+  type: LoadBalancer
+  port: 80
