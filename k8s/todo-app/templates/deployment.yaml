@@ -1,0 +1,40 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}-todo-app
+  labels:
+    app: todo-app
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      app: todo-app
+  template:
+    metadata:
+      labels:
+        app: todo-app
+    spec:
+      containers:
+        - name: todo-app
+          # Points to: potdartapan/todo-app:latest (or git-sha)
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: 3000 # Make sure this matches your Dockerfile EXPOSE!
+          resources:
+            limits:
+              cpu: "250m"
+              memory: "256Mi"
+            requests:
+              cpu: "100m"
+              memory: "128Mi"
+            env:
+            - name: DB_HOST
+              value: "postgres-postgresql" # The K8s Service Name
+            - name: DB_NAME
+              value: "tododb"
+            - name: DB_USER
+              value: "postgres"
+            - name: DB_PASSWORD
+            value: "mysecretpassword" # Matches the value in postgres.yaml

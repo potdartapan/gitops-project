@@ -1,0 +1,26 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: postgres
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://charts.bitnami.com/bitnami
+    chart: postgresql
+    targetRevision: 12.5.0 # Pin version for stability
+    helm:
+      parameters:
+        # Sets the generic password to 'postgres' for simplicity in this lab
+        # (In production, you would use Secrets)
+        - name: auth.postgresPassword
+          value: "mysecretpassword"
+        - name: auth.database
+          value: "tododb"
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: default
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
