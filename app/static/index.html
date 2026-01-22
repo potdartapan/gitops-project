@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>DevOps To-Do App</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f4f9; display: flex; justify-content: center; padding-top: 50px; }
+        .container { background: white; width: 400px; padding: 2rem; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        h1 { text-align: center; color: #333; }
+        
+        .input-group { display: flex; gap: 10px; margin-bottom: 20px; }
+        input[type="text"] { flex-grow: 1; padding: 10px; border: 1px solid #ddd; border-radius: 4px; outline: none; }
+        button.add-btn { background: #28a745; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer; font-weight: bold; }
+        button.add-btn:hover { background: #218838; }
+
+        ul { list-style: none; padding: 0; }
+        li { background: #fff; border-bottom: 1px solid #eee; padding: 10px; display: flex; align-items: center; justify-content: space-between; }
+        li:last-child { border-bottom: none; }
+        
+        .task-content { display: flex; align-items: center; gap: 10px; }
+        .completed { text-decoration: line-through; color: #888; }
+        
+        .delete-btn { background: #dc3545; color: white; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer; font-size: 0.8rem; }
+        .delete-btn:hover { background: #c82333; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>🚀 DevOps Tasks</h1>
+    <div class="input-group">
+        <input type="text" id="todoInput" placeholder="New task (e.g., Fix CI Pipeline)...">
+        <button class="add-btn" onclick="addTodo()">Add</button>
+    </div>
+    <ul id="todoList"></ul>
+</div>
+
+<script>
+    const API_URL = '/todos';
+
+    // 1. Fetch and Display Todos
+    async function fetchTodos() {
+        const response = await fetch(API_URL);
+        const todos = await response.json();
+        const list = document.getElementById('todoList');
+        list.innerHTML = ''; // Clear current list
+
+        todos.forEach(todo => {
+            const li = document.createElement('li');
+            li.innerHTML = `
+                <div class="task-content">
+                    <input type="checkbox" 
+                           ${todo.completed ? 'checked' : ''} 
+                           onchange="toggleTodo(${todo.id}, this.checked)">
+                    <span class="${todo.completed ? 'completed' : ''}">${todo.title}</span>
+                </div>
+                <button class="delete-btn" onclick="deleteTodo(${todo.id})">Delete</button>
+            `;
+            list.appendChild(li);
+        });
+    }
+
+    // 2. Add New Todo
+    async function addTodo() {
+        const input = document.getElementById('todoInput');
+        if (!input.value) return;
+        
+        await fetch(API_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ title: input.value })
+        });
+        input.value = '';
+        fetchTodos();
+    }
+
+    // 3. Toggle Complete (PUT Request)
+    async function toggleTodo(id, isChecked) {
+        await fetch(`${API_URL}/${id}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ completed: isChecked })
+        });
+        fetchTodos(); // Refresh to update strikethrough style
+    }
+
+    // 4. Delete Todo (DELETE Request)
+    async function deleteTodo(id) {
+        if(!confirm("Are you sure?")) return;
+        await fetch(`${API_URL}/${id}`, { method: 'DELETE' });
+        fetchTodos();
+    }
+
+    // Load on start
+    fetchTodos();
+</script>
+
+</body>
+</html>

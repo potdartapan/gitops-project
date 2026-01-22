@@ -1,0 +1,28 @@
+# --- Python ---
+__pycache__/
+*.py[cod]
+*$py.class
+venv/
+.venv/
+.env                    # CRITICAL: Never commit environment variables
+*.log
+
+# --- Docker ---
+.docker/
+docker-compose.override.yml  # If you have local overrides
+
+# --- Terraform (Infrastructure) ---
+.terraform/             # Plugins and modules
+*.tfstate               # CRITICAL: Contains your raw database passwords
+*.tfstate.backup
+*.tfvars                # CRITICAL: Often contains secrets
+.terraform.lock.hcl     # (Optional: some teams commit this, for solo projects it's fine to ignore)
+
+# --- IDEs & OS ---
+.vscode/
+.idea/
+.DS_Store               # Mac junk file
+Thumbs.db               # Windows junk file
+
+# --- Azure/Cloud ---
+azure-pipelines.yml     # If you are testing local pipeline configs
