@@ -26,3 +26,9 @@ Thumbs.db               # Windows junk file
 
 # --- Azure/Cloud ---
 azure-pipelines.yml     # If you are testing local pipeline configs
+
+**/.terraform/*
+**/*.tfstate
+**/*.tfstate.backup
+**/*.tfvars
+**/.terraform.lock.hcl
