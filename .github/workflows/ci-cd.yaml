@@ -2,7 +2,7 @@ name: Application CI (GitOps)
 
 on:
   push:
-    branches: [ "main" ]
+    branches: [ "master" ]
     paths-ignore:
       - 'terraform/**'
       - 'k8s/**' # Don't loop! If we change k8s files, don't trigger a build.
