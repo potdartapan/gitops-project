@@ -8,7 +8,7 @@ spec:
   source:
     repoURL: https://charts.bitnami.com/bitnami
     chart: postgresql
-    targetRevision: 12.5.0 # Pin version for stability
+    targetRevision: 15.5.3 # Pin version for stability
     helm:
       parameters:
         # Sets the generic password to 'postgres' for simplicity in this lab
