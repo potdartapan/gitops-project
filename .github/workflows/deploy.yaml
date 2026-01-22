@@ -2,6 +2,15 @@ name: Deploy to Docker Hub & AKS
 
 on:
   workflow_dispatch:
+    inputs:
+      action:
+        description: 'Terraform Action'
+        required: true
+        default: 'apply'
+        type: choice
+        options:
+        - apply
+        - destroy
 
 env:
   # Secrets for Terraform/Azure
