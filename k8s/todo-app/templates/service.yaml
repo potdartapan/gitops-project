@@ -1,15 +1,15 @@
 apiVersion: v1
 kind: Service
 metadata:
-  name: {{ include "todo-app.fullname" . }}
+  name: {{ .Release.Name }}-service
   labels:
-    {{- include "todo-app.labels" . | nindent 4 }}
+    app: todo-app
 spec:
-  type: {{ .Values.service.type }}
+  type: {{ .Values.service.type }} # We set this to LoadBalancer in values.yaml
   ports:
-    - port: {{ .Values.service.port }}
-      targetPort: http
+    - port: {{ .Values.service.port }}       # Port exposed to internet (80)
+      targetPort: 3000                       # Port app listens on (Matches Deployment)
       protocol: TCP
       name: http
   selector:
-    {{- include "todo-app.selectorLabels" . | nindent 4 }}
+    app: todo-app # This must match the labels in deployment.yaml

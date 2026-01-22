@@ -9,7 +9,8 @@ from sqlalchemy.orm import sessionmaker, Session
 from sqlalchemy.exc import OperationalError
 
 # --- Database Setup (Same as before) ---
-DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./test.db")
+
+
 engine = create_engine(DATABASE_URL)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
