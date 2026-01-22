@@ -3,9 +3,12 @@ name: Application CI (GitOps)
 on:
   push:
     branches: [ "master" ]
-    paths-ignore:
-      - 'terraform/**'
-      - 'k8s/**' # Don't loop! If we change k8s files, don't trigger a build.
+    # CHANGE: Replaced 'paths-ignore' with 'paths' (Allowlist)
+    paths:
+      - 'app/**'        # Only trigger if the python code changes
+      - 'app/Dockerfile' # Explicitly include Dockerfile (if it's inside app/)
+      - 'app/requirements.txt'
+  workflow_dispatch:
 
 jobs:
   build-and-update-git:
