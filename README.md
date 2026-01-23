@@ -104,3 +104,57 @@ Simply make a change to the code in `app/` and push to `master`.
 1. GitHub Actions will build the new image.
 2. The manifest will be updated.
 3. ArgoCD will sync the change to the cluster automatically.
+
+
+graph TD
+    %% Nodes and Styles
+    style Dev fill:#f9f,stroke:#333,stroke-width:2px
+    style AKS fill:#e1f5fe,stroke:#0277bd,stroke-width:2px
+    style GH fill:#24292e,stroke:#fff,color:#fff
+
+    subgraph Local [ 💻 Developer Workstation ]
+        Dev[Developer]
+    end
+
+    subgraph GitHub [ 🐙 GitHub Repository ]
+        Code[Source Code]
+        Config[k8s/ Manifests]
+    end
+
+    subgraph CI [ ⚙️ CI Pipeline (Outer Loop) ]
+        Action[GitHub Actions]
+        DockerHub[(🐳 Docker Hub)]
+        OCIReg[(📦 Bitnami OCI)]
+    end
+
+    subgraph AKS [ ☁️ Azure Kubernetes Service ]
+        subgraph Argo_System [ 🐙 Argo CD Controller ]
+            Root[Root App]
+            Child1[App 1: Postgres]
+            Child2[App 2: Todo-App]
+        end
+
+        subgraph Cluster [ ☸️ Default Namespace ]
+            PodApp[Todo-App Pod]
+            PodDB[Postgres Pod]
+        end
+    end
+
+    %% Flows
+    Dev -->|1. Push Code| Code
+    Dev -->|2. Update YAML| Config
+
+    Code -->|Trigger| Action
+    Action -->|Build & Push| DockerHub
+
+    Config <-->|3. Watch & Sync| Root
+    Root -->|Manage| Child1
+    Root -->|Manage| Child2
+
+    Child1 -->|Deploy| PodDB
+    Child2 -->|Deploy| PodApp
+
+    PodDB <..->|Pull Image| OCIReg
+    PodApp <..->|Pull Image| DockerHub
+
+    PodApp -->|Connect| PodDB
