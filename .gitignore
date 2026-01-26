@@ -32,3 +32,4 @@ azure-pipelines.yml     # If you are testing local pipeline configs
 **/*.tfstate.backup
 **/*.tfvars
 **/.terraform.lock.hcl
+*.db
