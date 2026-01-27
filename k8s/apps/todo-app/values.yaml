@@ -2,7 +2,7 @@ replicaCount: 1
 image:
   repository: potdartapan/todo-app # Your DockerHub Username
   pullPolicy: Always
-  tag: "8b60003014c019b6d53c153978699ce18d2792f9" # Will be overridden by GitHub Actions
+  tag: "6ad0e063cfddaf699b821b5d7536e78f4b5485d3" # Will be overridden by GitHub Actions
 service:
   type: LoadBalancer
   port: 80
