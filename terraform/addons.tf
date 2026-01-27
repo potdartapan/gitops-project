@@ -1,5 +1,4 @@
 # 1. Install NGINX Ingress Controller
-# (This is now your ONLY Public IP)
 resource "helm_release" "nginx_ingress" {
   name             = "ingress-nginx"
   repository       = "https://kubernetes.github.io/ingress-nginx"
@@ -9,19 +8,20 @@ resource "helm_release" "nginx_ingress" {
   version          = "4.8.3"
   depends_on       = [azurerm_kubernetes_cluster.aks]
 
-  set = [
-    {
-      name  = "controller.service.annotations.service\\.beta\\.kubernetes\\.io/azure-load-balancer-health-probe-request-path"
-      value = "/healthz"
-    },
-    {
-      name  = "controller.service.annotations.service\\.beta\\.kubernetes\\.io/azure-dns-label-name"
-      value = "tapan-gitops-app" # <--- Must be unique in the Azure Region
-    }
-  ]
+  # ERROR WAS HERE: Removed "set = [" and "]"
+  # FIX: Use repeated 'set' blocks
+  set {
+    name  = "controller.service.annotations.service\\.beta\\.kubernetes\\.io/azure-load-balancer-health-probe-request-path"
+    value = "/healthz"
+  }
+
+  set {
+    name  = "controller.service.annotations.service\\.beta\\.kubernetes\\.io/azure-dns-label-name"
+    value = "tapan-gitops-app" # <--- Ensure this is unique
+  }
 }
 
-# 2. Install Argo CD (Hidden behind Nginx)
+# 2. Install Argo CD
 resource "helm_release" "argocd" {
   name             = "argocd"
   repository       = "https://argoproj.github.io/argo-helm"
@@ -31,45 +31,47 @@ resource "helm_release" "argocd" {
   version          = "5.46.7"
   depends_on       = [azurerm_kubernetes_cluster.aks]
 
-  set = [
-    # 1. Use ClusterIP (Hidden behind Nginx)
-    {
-      name  = "server.service.type"
-      value = "ClusterIP"
-    },
-    # 2. Disable internal TLS (Let Nginx handle SSL)
-    {
-      name  = "server.insecure"
-      value = "true"
-    },
-    # 3. CRITICAL: Tell Argo it is running on a sub-path
-    {
-      name  = "server.basehref"
-      value = "/argocd"
-    },
-    {
-      name  = "server.rootpath"
-      value = "/argocd"
-    },
-    # 4. Configure the Ingress Rule for Argo
-    {
-      name  = "server.ingress.enabled"
-      value = "true"
-    },
-    {
-      name  = "server.ingress.ingressClassName"
-      value = "nginx"
-    },
-    {
-      name  = "server.ingress.path"
-      value = "/argocd"
-    }
-    # Note: We REMOVED the "hosts" setting. 
-    # This makes it listen on ANY domain that hits the IP.
-  ]
+  # 1. Use ClusterIP (Hidden behind Nginx)
+  set {
+    name  = "server.service.type"
+    value = "ClusterIP"
+  }
+
+  # 2. Disable internal TLS (Let Nginx handle SSL)
+  set {
+    name  = "server.insecure"
+    value = "true"
+  }
+
+  # 3. CRITICAL: Tell Argo it is running on a sub-path
+  set {
+    name  = "server.basehref"
+    value = "/argocd"
+  }
+
+  set {
+    name  = "server.rootpath"
+    value = "/argocd"
+  }
+
+  # 4. Configure the Ingress Rule for Argo
+  set {
+    name  = "server.ingress.enabled"
+    value = "true"
+  }
+
+  set {
+    name  = "server.ingress.ingressClassName"
+    value = "nginx"
+  }
+
+  set {
+    name  = "server.ingress.path"
+    value = "/argocd"
+  }
 }
 
-# 3. Argo Rollouts (Unchanged)
+# 3. Install Argo Rollouts
 resource "helm_release" "argo_rollouts" {
   name             = "argo-rollouts"
   repository       = "https://argoproj.github.io/argo-helm"
@@ -79,18 +81,14 @@ resource "helm_release" "argo_rollouts" {
   version          = "2.32.0"
   depends_on       = [azurerm_kubernetes_cluster.aks]
   
-  set = [
-    {
-      name  = "dashboard.enabled"
-      value = "true"
-    }
-  ]
+  set {
+    name  = "dashboard.enabled"
+    value = "true"
+  }
 }
 
+# 4. Bootstrap the Cluster (Apply root-app.yaml)
 resource "kubectl_manifest" "argocd_root_app" {
-    # This reads the file from k8s/bootstrap/root-app.yaml
-    yaml_body = file("${path.module}/k8s/bootstrap/root-app.yaml")
-    
-    # CRITICAL: Wait for Argo CD to be fully installed first
+    yaml_body = file("${path.module}/../k8s/bootstrap/root-app.yaml")
     depends_on = [helm_release.argocd]
 }

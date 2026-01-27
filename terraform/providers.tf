@@ -25,7 +25,7 @@ terraform {
   }
 
   backend "azurerm" {
-    resource_group_name  = "gitops-project-tfstate-rg"       # <--- The NEW separate RG
+    resource_group_name  = "gitops-project-tfstate-rg"
     storage_account_name = "tfstate1769048995"
     container_name       = "tfstate"
     key                  = "terraform.tfstate"
@@ -36,25 +36,30 @@ provider "azurerm" {
   features {}
 }
 
-# 3. Helm Provider (Top Level - NOT inside azurerm)
+# 3. Helm Provider
 provider "helm" {
-  kubernetes = {
-    host                   = data.azurerm_kubernetes_cluster.default.kube_config.0.host
-    client_certificate     = base64decode(data.azurerm_kubernetes_cluster.default.kube_config.0.client_certificate)
-    client_key             = base64decode(data.azurerm_kubernetes_cluster.default.kube_config.0.client_key)
-    cluster_ca_certificate = base64decode(data.azurerm_kubernetes_cluster.default.kube_config.0.cluster_ca_certificate)
+  kubernetes {
+    # CHANGE: Reference the resource directly, not "data"
+    host                   = azurerm_kubernetes_cluster.aks.kube_config.0.host
+    client_certificate     = base64decode(azurerm_kubernetes_cluster.aks.kube_config.0.client_certificate)
+    client_key             = base64decode(azurerm_kubernetes_cluster.aks.kube_config.0.client_key)
+    cluster_ca_certificate = base64decode(azurerm_kubernetes_cluster.aks.kube_config.0.cluster_ca_certificate)
   }
 }
 
-# 4. Kubernetes Provider (Top Level - NOT inside azurerm)
+# 4. Kubernetes Provider
 provider "kubernetes" {
-  host                   = data.azurerm_kubernetes_cluster.default.kube_config.0.host
-  client_certificate     = base64decode(data.azurerm_kubernetes_cluster.default.kube_config.0.client_certificate)
-  client_key             = base64decode(data.azurerm_kubernetes_cluster.default.kube_config.0.client_key)
-  cluster_ca_certificate = base64decode(data.azurerm_kubernetes_cluster.default.kube_config.0.cluster_ca_certificate)
+  host                   = azurerm_kubernetes_cluster.aks.kube_config.0.host
+  client_certificate     = base64decode(azurerm_kubernetes_cluster.aks.kube_config.0.client_certificate)
+  client_key             = base64decode(azurerm_kubernetes_cluster.aks.kube_config.0.client_key)
+  cluster_ca_certificate = base64decode(azurerm_kubernetes_cluster.aks.kube_config.0.cluster_ca_certificate)
 }
 
-
-
-
-
+# 5. Kubectl Provider (REQUIRED for addons.tf)
+provider "kubectl" {
+  host                   = azurerm_kubernetes_cluster.aks.kube_config.0.host
+  client_certificate     = base64decode(azurerm_kubernetes_cluster.aks.kube_config.0.client_certificate)
+  client_key             = base64decode(azurerm_kubernetes_cluster.aks.kube_config.0.client_key)
+  cluster_ca_certificate = base64decode(azurerm_kubernetes_cluster.aks.kube_config.0.cluster_ca_certificate)
+  load_config_file       = false
+}
