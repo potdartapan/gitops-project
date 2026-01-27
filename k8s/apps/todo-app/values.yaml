@@ -1,8 +1,15 @@
+# --- ADD THIS (Required by your Ingress template) ---
+appName: todo-app 
+# ----------------------------------------------------
+
 replicaCount: 1
+
 image:
-  repository: potdartapan/todo-app # Your DockerHub Username
+  repository: potdartapan/todo-app
   pullPolicy: Always
-  tag: "6ad0e063cfddaf699b821b5d7536e78f4b5485d3" # Will be overridden by GitHub Actions
+  tag: "6ad0e063cfddaf699b821b5d7536e78f4b5485d3" 
+
 service:
-  type: LoadBalancer
+  # CHANGE THIS: Use ClusterIP because Nginx Ingress handles external access
+  type: ClusterIP  
   port: 80
