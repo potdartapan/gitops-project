@@ -19,6 +19,12 @@ resource "helm_release" "nginx_ingress" {
     name  = "controller.service.annotations.service\\.beta\\.kubernetes\\.io/azure-dns-label-name"
     value = "tapan-gitops-app" # <--- Ensure this is unique
   }
+
+  # This stops NGINX from forcing 'http' users to go to 'https'
+  set {
+    name  = "controller.config.ssl-redirect"
+    value = "false"
+  }
 }
 
 # 2. Install Argo CD
