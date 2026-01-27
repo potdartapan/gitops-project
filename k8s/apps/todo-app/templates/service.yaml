@@ -1,0 +1,33 @@
+# 1. THE STABLE SERVICE (Production Traffic)
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Values.appName }}-stable
+spec:
+  type: ClusterIP
+  ports:
+  - port: 80
+    targetPort: 80
+    protocol: TCP
+    name: http
+  selector:
+    app: {{ .Values.appName }}
+    # Argo Rollouts will inject a specific hash label here automatically
+    # to ensure this ONLY points to stable pods.
+
+---
+# 2. THE CANARY SERVICE (Preview/Test Traffic)
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Values.appName }}-canary
+spec:
+  type: ClusterIP
+  ports:
+  - port: 80
+    targetPort: 80
+    protocol: TCP
+    name: http
+  selector:
+    app: {{ .Values.appName }}
+    # Argo Rollouts will inject the "canary-hash" label here automatically.

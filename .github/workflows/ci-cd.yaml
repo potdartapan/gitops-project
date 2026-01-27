@@ -3,7 +3,6 @@ name: Application CI (GitOps)
 on:
   push:
     branches: [ "master" ]
-    # CHANGE: Replaced 'paths-ignore' with 'paths' (Allowlist)
     paths:
       - 'app/**'        # Only trigger if the python code changes
       - 'app/Dockerfile' # Explicitly include Dockerfile (if it's inside app/)
@@ -40,7 +39,7 @@ jobs:
       - name: Update Image Tag in Helm
         uses: mikefarah/yq@master
         with:
-          cmd: yq -i '.image.tag = "${{ github.sha }}"' 'k8s/todo-app/values.yaml'
+          cmd: yq -i '.image.tag = "${{ github.sha }}"' 'k8s/apps/todo-app/values.yaml'
 
       # 3. Commit and Push the Change back to Repo
       - name: Commit and Push Changes
@@ -50,7 +49,7 @@ jobs:
           
           # Check if there are changes (to avoid empty commit errors)
           if [[ -n $(git status -s) ]]; then
-            git add k8s/todo-app/values.yaml
+            git add k8s/apps/todo-app/values.yaml
             git commit -m "Update image tag to ${{ github.sha }}"
             git push
           else

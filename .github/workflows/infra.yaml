@@ -41,78 +41,59 @@ jobs:
           terraform init
           terraform ${{ github.event.inputs.action }} -auto-approve
 
-      # 2. INSTALL ARGO CD (Only runs if we just applied infrastructure)
-      - name: Bootstrap Cluster
-        if: ${{ github.event.inputs.action == 'apply' }}
-        run: |
-          # Login to Azure to get credentials for the NEW cluster
-          az login --service-principal -u $ARM_CLIENT_ID -p $ARM_CLIENT_SECRET --tenant $ARM_TENANT_ID
-          az aks get-credentials --resource-group $RESOURCE_GROUP --name $CLUSTER_NAME --overwrite-existing
-
-          # Install Argo CD via Helm
-          helm repo add argo https://argoproj.github.io/argo-helm
-          helm repo update
-          helm upgrade --install argocd argo/argo-cd \
-            --namespace argocd \
-            --create-namespace \
-            --version 5.46.7 \
-            --set server.service.type=LoadBalancer \
-            --set server.insecure=true \
-            --wait
-
-          # Apply the "Master Manifests" to start the sync
-          kubectl apply -f k8s/postgres.yaml
-          kubectl apply -f k8s/argocd-app.yaml
-# 3. OUTPUT DASHBOARD (Robust Version)
+# 2. GET ACCESS INFO & URLS
+      # (We removed the manual Helm install because Terraform addons.tf handles it now)
       - name: 📊 Get Access Info
         if: ${{ github.event.inputs.action == 'apply' }}
         run: |
-          # 1. Login again to ensure context
+          # 1. Login to Azure to get kubeconfig
           az login --service-principal -u $ARM_CLIENT_ID -p $ARM_CLIENT_SECRET --tenant $ARM_TENANT_ID
           az aks get-credentials --resource-group $RESOURCE_GROUP --name $CLUSTER_NAME --overwrite-existing
 
-          echo "⏳ Waiting for Argo CD to sync and services to appear..."
+          echo "⏳ Waiting for NGINX Ingress to receive Public IP from Azure..."
 
-          # --- WAIT FOR TODO APP SERVICE ---
-          # Loop until the Service actually exists (Argo CD has synced)
-          echo "   -> Looking for Todo App Service..."
-          while [ $(kubectl get svc -n default -l app=todo-app --no-headers 2>/dev/null | wc -l) -eq 0 ]; do
-            echo "      (Service not found yet... waiting for Argo CD)"
-            sleep 10
+          # 2. Wait for NGINX Controller IP (The Single Entry Point)
+          NGINX_IP=""
+          while [ -z "$NGINX_IP" ]; do
+            # We look for the ingress-nginx-controller service
+            NGINX_IP=$(kubectl get svc -n ingress-nginx ingress-nginx-controller -o jsonpath='{.status.loadBalancer.ingress[0].ip}' 2>/dev/null)
+            
+            if [ -z "$NGINX_IP" ]; then
+              echo "   (Waiting for Azure Public IP...)"
+              sleep 10
+            fi
           done
 
-          # Now Loop until Azure assigns the IP
-          echo "   -> Service found! Waiting for Public IP..."
-          TODO_IP=""
-          while [ -z "$TODO_IP" ]; do
-            TODO_IP=$(kubectl get svc -n default -l app=todo-app -o jsonpath='{.items[0].status.loadBalancer.ingress[0].ip}' 2>/dev/null)
-            [ -z "$TODO_IP" ] && sleep 10
-          done
+          echo "✅ NGINX IP Found: $NGINX_IP"
 
-          # --- WAIT FOR ARGO CD SERVICE ---
-          echo "   -> Looking for Argo CD Server..."
-          ARGO_IP=""
-          while [ -z "$ARGO_IP" ]; do
-            # Note: We use the specific service name 'argocd-server' here
-            ARGO_IP=$(kubectl get svc -n argocd argocd-server -o jsonpath='{.status.loadBalancer.ingress[0].ip}' 2>/dev/null)
-            [ -z "$ARGO_IP" ] && sleep 10
-          done
-
-          # --- GET PASSWORD ---
+          # 3. Get Argo CD Password
+          echo "🔐 Retrieving Argo CD Password..."
           ARGO_PWD=$(kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath="{.data.password}" | base64 -d)
+
+          # 4. Construct URLs
+          # Update this variable if you changed the dns-label in addons.tf
+          DNS_LABEL="tapan-gitops-app"
+          REGION="eastus2" # Update this to your actual region (e.g. eastus)
+          
+          # The Full Azure DNS Name
+          DNS_NAME="${DNS_LABEL}.${REGION}.cloudapp.azure.com"
 
           # --- PRINT OUTPUT ---
           echo "====================================================="
           echo "🚀 DEPLOYMENT SUCCESSFUL!"
           echo "====================================================="
           echo ""
-          echo "📝 TODO APPLICATION:"
-          echo "   URL: http://$TODO_IP"
+          echo "🌐 PUBLIC ACCESS (DNS):"
+          echo "   (Note: DNS propagation might take 1-2 mins)"
+          echo "   👉 App URL:      http://${DNS_NAME}/"
+          echo "   👉 Argo CD URL:  http://${DNS_NAME}/argocd/"
           echo ""
-          echo "🐙 ARGO CD DASHBOARD:"
-          echo "   URL:      https://$ARGO_IP"
+          echo "🔌 DIRECT IP ACCESS (If DNS fails):"
+          echo "   👉 App IP:       http://${NGINX_IP}/"
+          echo "   👉 Argo CD IP:   http://${NGINX_IP}/argocd/"
+          echo ""
+          echo "🔑 ARGO CD CREDENTIALS:"
           echo "   User:     admin"
           echo "   Password: $ARGO_PWD"
           echo ""
           echo "====================================================="
-          echo "⚠️  NOTE: It may take 1-2 minutes for the URLs to become reachable."

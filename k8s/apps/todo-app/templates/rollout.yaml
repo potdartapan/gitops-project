@@ -1,0 +1,40 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Rollout
+metadata:
+  name: {{ .Values.appName }}
+  labels:
+    app: {{ .Values.appName }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      app: {{ .Values.appName }}
+  # THE STRATEGY SECTION (This is the Magic)
+  strategy:
+    canary:
+      # Traffic splitting logic
+      canaryService: {{ .Values.appName }}-canary # Traffic shifts here during test
+      stableService: {{ .Values.appName }}-stable # Traffic lives here normally
+      trafficRouting:
+        nginx:
+          stableIngress: {{ .Values.appName }}-ingress
+      steps:
+      - setWeight: 20
+      - pause: {duration: 30s} # Wait 30s for you to check it
+      - setWeight: 50
+      - pause: {duration: 10s}
+  # STANDARD POD TEMPLATE (Same as your old Deployment)
+  template:
+    metadata:
+      labels:
+        app: {{ .Values.appName }}
+    spec:
+      containers:
+      - name: {{ .Values.appName }}
+        image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+        ports:
+        - containerPort: 80
+        resources:
+          requests:
+            cpu: 100m
+            memory: 128Mi

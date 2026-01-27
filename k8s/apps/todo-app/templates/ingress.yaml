@@ -1,0 +1,19 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ .Values.appName }}-ingress
+  annotations:
+    kubernetes.io/ingress.class: nginx
+    # Rewrites shouldn't be needed if app runs at root, but good to have handy
+    # nginx.ingress.kubernetes.io/rewrite-target: /
+spec:
+  rules:
+  - http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: {{ .Values.appName }}-stable # Always point Ingress to STABLE
+            port:
+              number: 80

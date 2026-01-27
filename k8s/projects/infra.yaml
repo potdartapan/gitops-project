@@ -1,0 +1,19 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: todo-infra
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/potdartapan/gitops-project.git
+    targetRevision: HEAD
+    # CRITICAL UPDATE: Point to where postgres.yaml lives
+    path: k8s/infra 
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: default
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
