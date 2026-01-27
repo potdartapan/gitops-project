@@ -34,25 +34,65 @@ jobs:
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v2
 
-      # 1. BUILD OR DESTROY INFRASTRUCTURE
+      # ---------------------------------------------------------
+      # NEW STEP: PRE-DESTROY CLEANUP (The "Anti-Hang" Mechanism)
+      # ---------------------------------------------------------
+      - name: 🧹 Pre-Destroy Cleanup
+        if: ${{ github.event.inputs.action == 'destroy' }}
+        run: |
+          echo "⚠️ DESTROY ACTION DETECTED: Cleaning up Kubernetes Load Balancers first..."
+          
+          # 1. Login to Azure & Set Subscription (CRITICAL FIX)
+          az login --service-principal -u $ARM_CLIENT_ID -p $ARM_CLIENT_SECRET --tenant $ARM_TENANT_ID --output none
+          az account set --subscription $ARM_SUBSCRIPTION_ID
+          
+          # 2. Check if cluster exists (Don't fail if it's already gone)
+          if ! az aks show --resource-group $RESOURCE_GROUP --name $CLUSTER_NAME > /dev/null 2>&1; then
+            echo "Cluster not found. Skipping cleanup."
+            exit 0
+          fi
+
+          # 3. Get Credentials
+          az aks get-credentials --resource-group $RESOURCE_GROUP --name $CLUSTER_NAME --overwrite-existing
+
+          # 4. Delete Namespaces that hold Cloud Resources (Public IPs)
+          # We use --timeout to ensure we don't wait forever, and ignore-not-found
+          echo "   -> Deleting Ingress Controller (Releasing Public IP)..."
+          kubectl delete namespace ingress-nginx --timeout=60s --ignore-not-found=true || true
+          
+          echo "   -> Deleting Argo CD..."
+          kubectl delete namespace argocd --timeout=60s --ignore-not-found=true || true
+
+          # 5. Wait for Azure to detach the IP
+          echo "   -> Pausing 45s to allow Azure Load Balancer cleanup..."
+          sleep 45
+          echo "✅ Cleanup Complete. Handing over to Terraform."
+
+      # ---------------------------------------------------------
+      # STANDARD TERRAFORM EXECUTION
+      # ---------------------------------------------------------
       - name: Terraform Run
         working-directory: ./terraform
         run: |
           terraform init
           terraform ${{ github.event.inputs.action }} -auto-approve
 
-# 2. GET ACCESS INFO & URLS
-      # (We removed the manual Helm install because Terraform addons.tf handles it now)
+      # ---------------------------------------------------------
+      # POST-APPLY: GET URLS
+      # ---------------------------------------------------------
       - name: 📊 Get Access Info
         if: ${{ github.event.inputs.action == 'apply' }}
         run: |
-          # 1. Login to Azure to get kubeconfig
-          az login --service-principal -u $ARM_CLIENT_ID -p $ARM_CLIENT_SECRET --tenant $ARM_TENANT_ID
+          # 1. Login to Azure & Set Subscription (CRITICAL FIX)
+          az login --service-principal -u $ARM_CLIENT_ID -p $ARM_CLIENT_SECRET --tenant $ARM_TENANT_ID --output none
+          az account set --subscription $ARM_SUBSCRIPTION_ID
+
+          # 2. Connect to Cluster
           az aks get-credentials --resource-group $RESOURCE_GROUP --name $CLUSTER_NAME --overwrite-existing
 
           echo "⏳ Waiting for NGINX Ingress to receive Public IP from Azure..."
 
-          # 2. Wait for NGINX Controller IP (The Single Entry Point)
+          # 3. Wait for NGINX Controller IP (The Single Entry Point)
           NGINX_IP=""
           while [ -z "$NGINX_IP" ]; do
             # We look for the ingress-nginx-controller service
@@ -66,14 +106,13 @@ jobs:
 
           echo "✅ NGINX IP Found: $NGINX_IP"
 
-          # 3. Get Argo CD Password
+          # 4. Get Argo CD Password
           echo "🔐 Retrieving Argo CD Password..."
           ARGO_PWD=$(kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath="{.data.password}" | base64 -d)
 
-          # 4. Construct URLs
-          # Update this variable if you changed the dns-label in addons.tf
+          # 5. Construct URLs
           DNS_LABEL="tapan-gitops-app"
-          REGION="eastus2" # Update this to your actual region (e.g. eastus)
+          REGION="eastus2" 
           
           # The Full Azure DNS Name
           DNS_NAME="${DNS_LABEL}.${REGION}.cloudapp.azure.com"
