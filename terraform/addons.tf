@@ -75,6 +75,12 @@ resource "helm_release" "argocd" {
     name  = "server.ingress.path"
     value = "/argocd"
   }
+
+  # This adds an annotation to the Argo CD Ingress specifically
+  set {
+    name  = "server.ingress.annotations.nginx\\.ingress\\.kubernetes\\.io/ssl-redirect"
+    value = "false"
+  }
 }
 
 # 3. Install Argo Rollouts
