@@ -13,3 +13,4 @@ service:
   # CHANGE THIS: Use ClusterIP because Nginx Ingress handles external access
   type: ClusterIP  
   port: 80
+  targetPort: 3000
