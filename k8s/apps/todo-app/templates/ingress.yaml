@@ -4,16 +4,20 @@ metadata:
   name: {{ .Values.appName }}-ingress
   annotations:
     kubernetes.io/ingress.class: nginx
-    # Rewrites shouldn't be needed if app runs at root, but good to have handy
-    # nginx.ingress.kubernetes.io/rewrite-target: /
+    # 1. CRITICAL FIX: Stops the infinite redirect loop
+    nginx.ingress.kubernetes.io/ssl-redirect: "false"
 spec:
   rules:
-  - http:
+  # 2. BEST PRACTICE: Lock this rule to your specific DNS
+  #    (Replace this variable with your actual DNS if hardcoding)
+  - host: tapan-gitops-app.eastus2.cloudapp.azure.com
+    http:
       paths:
       - path: /
         pathType: Prefix
         backend:
           service:
-            name: {{ .Values.appName }}-stable # Always point Ingress to STABLE
+            # 3. VERIFY: Ensure your Service is actually named "todo-app-stable"
+            name: {{ .Values.appName }}-stable 
             port:
               number: 80
