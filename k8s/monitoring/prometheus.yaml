@@ -11,16 +11,41 @@ spec:
     targetRevision: 69.3.0
     helm:
       values: |
+        # 1. DISABLE HEAVY COMPONENTS (Saves ~400MB RAM)
+        alertmanager:
+          enabled: false
+        kubeStateMetrics:
+          enabled: false
+        nodeExporter:
+          enabled: false
+        
+        # 2. OPTIMIZE GRAFANA
         grafana:
           adminPassword: "admin"
+          resources:
+            limits:
+              memory: 256Mi
+            requests:
+              memory: 128Mi
+
+        # 3. FIX PROMETHEUS CONFLICTS & LIMIT MEMORY
         prometheusOperator:
           admissionWebhooks:
             enabled: false
             patch:
               enabled: false
+        
         prometheus:
           prometheusSpec:
             serviceMonitorSelectorNilUsesHelmValues: false
+            # CAP MEMORY USAGE (Prevents it from eating the whole node)
+            resources:
+              requests:
+                memory: 256Mi
+              limits:
+                memory: 512Mi
+            # Reduce retention to save disk I/O
+            retention: 2d
   destination:
     server: https://kubernetes.default.svc
     namespace: monitoring
