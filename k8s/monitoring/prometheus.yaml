@@ -38,17 +38,45 @@ spec:
         prometheus:
           prometheusSpec:
             serviceMonitorSelectorNilUsesHelmValues: false
-            # CAP MEMORY USAGE (Prevents it from eating the whole node)
             resources:
               requests:
                 memory: 256Mi
               limits:
                 memory: 512Mi
-            # Reduce retention to save disk I/O
             retention: 2d
+
   destination:
     server: https://kubernetes.default.svc
     namespace: monitoring
+
+  # --- THE NEW IGNORE RULES (Fixes your screenshot) ---
+  ignoreDifferences:
+  - group: apps
+    kind: Deployment
+    jsonPointers:
+    - /spec/template/spec/containers/0/resources
+    - /spec/template/spec/containers/1/resources
+    - /spec/template/spec/containers/2/resources
+  - group: apps
+    kind: DaemonSet
+    jsonPointers:
+    - /spec/template/spec/containers/0/resources
+  - group: monitoring.coreos.com
+    kind: ServiceMonitor
+    jsonPointers:
+    - /spec/endpoints/0/relabelings
+  - group: monitoring.coreos.com
+    kind: Prometheus
+    jsonPointers:
+    - /spec/storage
+    - /spec/resources
+  - group: "*"
+    kind: Secret
+    name: "sh.helm.release.v1.kube-prometheus-stack.v1"
+    jsonPointers:
+    - /data/release
+  # ----------------------------------------------------
+
   syncPolicy:
     automated:
       prune: true
