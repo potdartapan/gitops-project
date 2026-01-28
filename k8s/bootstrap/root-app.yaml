@@ -8,7 +8,7 @@ spec:
   source:
     repoURL: 'https://github.com/potdartapan/gitops-project.git' # <--- Your Repo URL
     targetRevision: HEAD
-    path: k8s  # <--- The folder where your App YAMLs live
+    path: k8s/projects  # <--- The folder where your App YAMLs live
   destination:
     server: 'https://kubernetes.default.svc'
     namespace: argocd
