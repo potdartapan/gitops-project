@@ -35,38 +35,51 @@ jobs:
         uses: hashicorp/setup-terraform@v2
 
       # ---------------------------------------------------------
-      # NEW STEP: PRE-DESTROY CLEANUP (The "Anti-Hang" Mechanism)
+      # NEW STEP: PRE-DESTROY CLEANUP (Fixed)
       # ---------------------------------------------------------
       - name: 🧹 Pre-Destroy Cleanup
         if: ${{ github.event.inputs.action == 'destroy' }}
+        working-directory: ./terraform   # <--- FIX 1: Must run inside the folder!
         run: |
           echo "⚠️ DESTROY ACTION DETECTED: Cleaning up Kubernetes Load Balancers first..."
           
-          # 1. Login to Azure & Set Subscription (CRITICAL FIX)
+          # 1. Login to Azure
           az login --service-principal -u $ARM_CLIENT_ID -p $ARM_CLIENT_SECRET --tenant $ARM_TENANT_ID --output none
           az account set --subscription $ARM_SUBSCRIPTION_ID
           
-          # 2. Check if cluster exists (Don't fail if it's already gone)
+          # 2. Check if cluster exists
           if ! az aks show --resource-group $RESOURCE_GROUP --name $CLUSTER_NAME > /dev/null 2>&1; then
             echo "Cluster not found. Skipping cleanup."
             exit 0
           fi
 
-          # 3. Get Credentials
+          # 3. Get Credentials (for kubectl commands)
           az aks get-credentials --resource-group $RESOURCE_GROUP --name $CLUSTER_NAME --overwrite-existing
 
-          # 4. Delete Namespaces that hold Cloud Resources (Public IPs)
-          # We use --timeout to ensure we don't wait forever, and ignore-not-found
-          echo "   -> Deleting Ingress Controller (Releasing Public IP)..."
-          kubectl delete namespace ingress-nginx --timeout=60s --ignore-not-found=true || true
-          
-          echo "   -> Deleting Argo CD..."
-          kubectl delete namespace argocd --timeout=60s --ignore-not-found=true || true
+          # 4. INITIALIZE TERRAFORM
+          # FIX 2: Using standard init to match your main step. 
+          # If you use a backend.tf file, this is all you need.
+          terraform init
 
-          # 5. Wait for Azure to detach the IP
+          # 5. FORCE CLEANUP (Cluster + State)
+          
+          echo "   -> Processing Ingress Controller..."
+          # Note: We run kubectl, but we don't care if it fails (|| true)
+          kubectl delete namespace ingress-nginx --timeout=60s --ignore-not-found=true || true
+          terraform state rm helm_release.nginx_ingress || true
+          
+          echo "   -> Processing Argo CD..."
+          kubectl delete namespace argocd --timeout=60s --ignore-not-found=true || true
+          terraform state rm helm_release.argocd || true
+
+          echo "   -> Processing Argo Rollouts..."
+          kubectl delete namespace argo-rollouts --timeout=60s --ignore-not-found=true || true
+          terraform state rm helm_release.argo_rollouts || true
+
+          # 6. Wait for Azure to detach the IP
           echo "   -> Pausing 45s to allow Azure Load Balancer cleanup..."
           sleep 45
-          echo "✅ Cleanup Complete. Handing over to Terraform."
+          echo "✅ Cleanup Complete. State is synced. Handing over to Terraform."
 
       # ---------------------------------------------------------
       # STANDARD TERRAFORM EXECUTION
@@ -83,56 +96,28 @@ jobs:
       - name: 📊 Get Access Info
         if: ${{ github.event.inputs.action == 'apply' }}
         run: |
-          # 1. Login to Azure & Set Subscription (CRITICAL FIX)
+          # Login again just to be safe (sessions can time out)
           az login --service-principal -u $ARM_CLIENT_ID -p $ARM_CLIENT_SECRET --tenant $ARM_TENANT_ID --output none
           az account set --subscription $ARM_SUBSCRIPTION_ID
-
-          # 2. Connect to Cluster
           az aks get-credentials --resource-group $RESOURCE_GROUP --name $CLUSTER_NAME --overwrite-existing
 
-          echo "⏳ Waiting for NGINX Ingress to receive Public IP from Azure..."
-
-          # 3. Wait for NGINX Controller IP (The Single Entry Point)
+          echo "⏳ Waiting for NGINX Ingress to receive Public IP..."
+          
           NGINX_IP=""
           while [ -z "$NGINX_IP" ]; do
-            # We look for the ingress-nginx-controller service
             NGINX_IP=$(kubectl get svc -n ingress-nginx ingress-nginx-controller -o jsonpath='{.status.loadBalancer.ingress[0].ip}' 2>/dev/null)
-            
             if [ -z "$NGINX_IP" ]; then
-              echo "   (Waiting for Azure Public IP...)"
+              echo "   (Waiting for Azure IP...)"
               sleep 10
             fi
           done
 
-          echo "✅ NGINX IP Found: $NGINX_IP"
-
-          # 4. Get Argo CD Password
-          echo "🔐 Retrieving Argo CD Password..."
           ARGO_PWD=$(kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath="{.data.password}" | base64 -d)
+          DNS_NAME="tapan-gitops-app.eastus2.cloudapp.azure.com"
 
-          # 5. Construct URLs
-          DNS_LABEL="tapan-gitops-app"
-          REGION="eastus2" 
-          
-          # The Full Azure DNS Name
-          DNS_NAME="${DNS_LABEL}.${REGION}.cloudapp.azure.com"
-
-          # --- PRINT OUTPUT ---
           echo "====================================================="
           echo "🚀 DEPLOYMENT SUCCESSFUL!"
-          echo "====================================================="
-          echo ""
-          echo "🌐 PUBLIC ACCESS (DNS):"
-          echo "   (Note: DNS propagation might take 1-2 mins)"
-          echo "   👉 App URL:      http://${DNS_NAME}/"
-          echo "   👉 Argo CD URL:  http://${DNS_NAME}/argocd/"
-          echo ""
-          echo "🔌 DIRECT IP ACCESS (If DNS fails):"
-          echo "   👉 App IP:       http://${NGINX_IP}/"
-          echo "   👉 Argo CD IP:   http://${NGINX_IP}/argocd/"
-          echo ""
-          echo "🔑 ARGO CD CREDENTIALS:"
-          echo "   User:     admin"
-          echo "   Password: $ARGO_PWD"
-          echo ""
+          echo "👉 App URL:      http://${DNS_NAME}/"
+          echo "👉 Argo URL:     http://${DNS_NAME}/argocd/"
+          echo "🔑 Argo Pass:    $ARGO_PWD"
           echo "====================================================="
