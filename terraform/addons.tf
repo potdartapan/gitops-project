@@ -54,6 +54,10 @@ resource "helm_release" "argocd" {
     name  = "server.basehref"
     value = "/argocd"
   }
+  set {
+    name  = "server.extraArgs[1]"
+    value = "--insecure"
+  }
 
   set {
     name  = "server.rootpath"
