@@ -18,17 +18,8 @@ spec:
           enabled: false
         nodeExporter:
           enabled: false
-        
-        # 2. OPTIMIZE GRAFANA
-        grafana:
-          adminPassword: "admin"
-          resources:
-            limits:
-              memory: 256Mi
-            requests:
-              memory: 128Mi
 
-        # 3. FIX PROMETHEUS CONFLICTS & LIMIT MEMORY
+        # 2. FIX PROMETHEUS CONFLICTS & LIMIT MEMORY
         prometheusOperator:
           admissionWebhooks:
             enabled: false
@@ -45,11 +36,38 @@ spec:
                 memory: 512Mi
             retention: 2d
 
+        # 3. OPTIMIZE GRAFANA & CONFIGURE INGRESS (Merged Block)
+        grafana:
+          adminPassword: "admin"
+          resources:
+            limits:
+              memory: 256Mi
+            requests:
+              memory: 128Mi
+          
+          # Tell Grafana it lives in a sub-folder
+          grafana.ini:
+            server:
+              domain: tapan-gitops-app.eastus2.cloudapp.azure.com
+              root_url: "%(protocol)s://%(domain)s:%(http_port)s/grafana"
+              serve_from_sub_path: true
+
+          # Configure Ingress to use your Azure DNS
+          ingress:
+            enabled: true
+            ingressClassName: nginx
+            annotations:
+              nginx.ingress.kubernetes.io/rewrite-target: /$2
+              nginx.ingress.kubernetes.io/use-regex: "true"
+            hosts:
+              - tapan-gitops-app.eastus2.cloudapp.azure.com
+            path: /grafana(/|$)(.*)
+
   destination:
     server: https://kubernetes.default.svc
     namespace: monitoring
 
-  # --- THE NEW IGNORE RULES (Fixes your screenshot) ---
+  # --- IGNORE RULES (Prevents "Out of Sync") ---
   ignoreDifferences:
   - group: apps
     kind: Deployment

@@ -120,4 +120,5 @@ jobs:
           echo "👉 App URL:      http://${DNS_NAME}/"
           echo "👉 Argo URL:     http://${DNS_NAME}/argocd/"
           echo "🔑 Argo Pass:    $ARGO_PWD"
+          echo "👉 Grafana URL:  http://${DNS_NAME}/grafana/"
           echo "====================================================="
