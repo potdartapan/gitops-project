@@ -6,7 +6,7 @@ replicaCount: 1
 image:
   repository: potdartapan/todo-app
   pullPolicy: Always
-  tag: "3db5e2708c4bfd4a70e56e14569707b9cd419dbb"
+  tag: "4c9bd9d7f59424a262b28b0323d551cbfad8a918"
 service:
   # CHANGE THIS: Use ClusterIP because Nginx Ingress handles external access
   type: ClusterIP
