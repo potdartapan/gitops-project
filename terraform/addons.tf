@@ -63,7 +63,7 @@ resource "helm_release" "argocd" {
   # 4. Configure the Ingress Rule for Argo
   set {
     name  = "server.ingress.enabled"
-    value = "true"
+    value = "false"
   }
 
   set {
@@ -81,6 +81,8 @@ resource "helm_release" "argocd" {
     name  = "server.ingress.annotations.nginx\\.ingress\\.kubernetes\\.io/ssl-redirect"
     value = "false"
   }
+
+  
 }
 
 # 3. Install Argo Rollouts
@@ -97,6 +99,11 @@ resource "helm_release" "argo_rollouts" {
     name  = "dashboard.enabled"
     value = "true"
   }
+set {
+    name  = "dashboard.ingress.enabled"  # <--- CHANGED THIS from 'server'
+    value = "false"
+  }
+  
 }
 
 # 4. Bootstrap the Cluster (Apply root-app.yaml)
