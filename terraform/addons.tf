@@ -59,7 +59,10 @@ resource "helm_release" "argocd" {
     name  = "server.rootpath"
     value = "/argocd"
   }
-
+  set {
+    name  = "server.extraArgs[0]"
+    value = "--rootpath=/argocd"
+  }
   # 4. Configure the Ingress Rule for Argo
   set {
     name  = "server.ingress.enabled"
