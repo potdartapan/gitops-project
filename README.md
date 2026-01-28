@@ -10,8 +10,8 @@ The following diagram illustrates the complete DevOps workflow, from code commit
 graph TD
     %% Define Nodes
     Dev[👤 Developer]
-    Git[📂 GitHub Repository<br/>(Source Code & Config)]
-    TF[🏗️ Terraform<br/>(Infrastructure as Code)]
+    Git["📂 GitHub Repository<br/>(Source Code & Config)"]
+    TF["🏗️ Terraform<br/>(Infrastructure as Code)"]
 
     subgraph "CI Pipeline (GitHub Actions)"
         CI_Build[🔨 Build & Test]
@@ -19,14 +19,14 @@ graph TD
         CI_Update[📝 Update Helm Manifest]
     end
 
-    DH[(Docker Hub<br/>Container Registry)]
+    DH[("Docker Hub<br/>Container Registry")]
 
     subgraph "Azure Cloud"
-        AKS[☁️ Azure Kubernetes Service<br/>(AKS Cluster)]
+        AKS["☁️ Azure Kubernetes Service<br/>(AKS Cluster)"]
         subgraph "GitOps Controller"
             ArgoCD[🐙 Argo CD]
         end
-        App[🚀 Todo App<br/>(Running Pods)]
+        App["🚀 Todo App<br/>(Running Pods)"]
     end
 
     %% Flows
