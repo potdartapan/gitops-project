@@ -19,7 +19,7 @@ spec:
         nodeExporter:
           enabled: false
 
-        # 2. FIX PROMETHEUS CONFLICTS & LIMIT MEMORY
+        # 2. FIX PROMETHEUS CONFLICTS
         prometheusOperator:
           admissionWebhooks:
             enabled: false
@@ -36,7 +36,7 @@ spec:
                 memory: 512Mi
             retention: 2d
 
-        # 3. GRAFANA CONFIGURATION (Using ENV VARS to fix crash)
+        # 3. GRAFANA CONFIGURATION (The Fix)
         grafana:
           adminPassword: "admin"
           resources:
@@ -45,22 +45,27 @@ spec:
             requests:
               memory: 128Mi
           
-          # --- USE ENV VARS (Safer than grafana.ini) ---
-          env:
-            GF_SERVER_DOMAIN: "tapan-gitops-app.eastus2.cloudapp.azure.com"
-            GF_SERVER_ROOT_URL: "http://tapan-gitops-app.eastus2.cloudapp.azure.com/grafana"
-            GF_SERVER_SERVE_FROM_SUB_PATH: "true"
-          # ---------------------------------------------
+          # A. Server Config (Hardcoded to prevent redirect loops)
+          grafana.ini:
+            server:
+              domain: "tapan-gitops-app.eastus2.cloudapp.azure.com"
+              root_url: "http://tapan-gitops-app.eastus2.cloudapp.azure.com/grafana"
+              serve_from_sub_path: "true"
 
+          # B. Ingress Config (Expanded format to fix Nil Pointer)
           ingress:
             enabled: true
             ingressClassName: nginx
             annotations:
               nginx.ingress.kubernetes.io/rewrite-target: /$2
               nginx.ingress.kubernetes.io/use-regex: "true"
+            
+            # USE THIS EXPLICIT FORMAT:
             hosts:
-              - tapan-gitops-app.eastus2.cloudapp.azure.com
-            path: /grafana(/|$)(.*)
+              - host: tapan-gitops-app.eastus2.cloudapp.azure.com
+                paths:
+                  - path: /grafana(/|$)(.*)
+                    pathType: ImplementationSpecific
 
   destination:
     server: https://kubernetes.default.svc
