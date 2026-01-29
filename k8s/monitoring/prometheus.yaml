@@ -11,7 +11,7 @@ spec:
     targetRevision: 69.3.0
     helm:
       values: |
-        # 1. DISABLE HEAVY COMPONENTS (Saves ~400MB RAM)
+        # 1. DISABLE HEAVY COMPONENTS
         alertmanager:
           enabled: false
         kubeStateMetrics:
@@ -36,7 +36,7 @@ spec:
                 memory: 512Mi
             retention: 2d
 
-        # 3. OPTIMIZE GRAFANA & CONFIGURE INGRESS
+        # 3. GRAFANA CONFIGURATION (Using ENV VARS to fix crash)
         grafana:
           adminPassword: "admin"
           resources:
@@ -45,15 +45,13 @@ spec:
             requests:
               memory: 128Mi
           
-          grafana.ini:
-            server:
-              # FIXED: Hardcoded URL prevents crash & port 3000 redirect loop
-              domain: tapan-gitops-app.eastus2.cloudapp.azure.com
-              root_url: "http://tapan-gitops-app.eastus2.cloudapp.azure.com/grafana"
-              serve_from_sub_path: "true"
-              protocol: http
+          # --- USE ENV VARS (Safer than grafana.ini) ---
+          env:
+            GF_SERVER_DOMAIN: "tapan-gitops-app.eastus2.cloudapp.azure.com"
+            GF_SERVER_ROOT_URL: "http://tapan-gitops-app.eastus2.cloudapp.azure.com/grafana"
+            GF_SERVER_SERVE_FROM_SUB_PATH: "true"
+          # ---------------------------------------------
 
-          # Configure Ingress to use your Azure DNS
           ingress:
             enabled: true
             ingressClassName: nginx
@@ -68,7 +66,6 @@ spec:
     server: https://kubernetes.default.svc
     namespace: monitoring
 
-  # --- IGNORE RULES (Prevents "Out of Sync") ---
   ignoreDifferences:
   - group: apps
     kind: Deployment
@@ -94,7 +91,6 @@ spec:
     name: "sh.helm.release.v1.kube-prometheus-stack.v1"
     jsonPointers:
     - /data/release
-  # ----------------------------------------------------
 
   syncPolicy:
     automated:
