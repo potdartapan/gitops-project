@@ -19,16 +19,14 @@ spec:
         nodeExporter:
           enabled: false
 
-        # 2. FIX PROMETHEUS CONFLICTS
+        # 2. PROMETHEUS OPTIMIZATIONS
         prometheusOperator:
           admissionWebhooks:
             enabled: false
             patch:
               enabled: false
-        
         prometheus:
           prometheusSpec:
-            serviceMonitorSelectorNilUsesHelmValues: false
             resources:
               requests:
                 memory: 256Mi
@@ -36,7 +34,7 @@ spec:
                 memory: 512Mi
             retention: 2d
 
-        # 3. GRAFANA CONFIGURATION (The Fix)
+        # 3. BASELINE GRAFANA (No Ingress, No Custom INI)
         grafana:
           adminPassword: "admin"
           resources:
@@ -44,64 +42,15 @@ spec:
               memory: 256Mi
             requests:
               memory: 128Mi
-          
-          # A. Server Config (Hardcoded to prevent redirect loops)
-          grafana.ini:
-            server:
-              domain: "tapan-gitops-app.eastus2.cloudapp.azure.com"
-              root_url: "http://tapan-gitops-app.eastus2.cloudapp.azure.com/grafana"
-              serve_from_sub_path: "true"
-
-          # B. Ingress Config (Expanded format to fix Nil Pointer)
-          ingress:
-            enabled: true
-            ingressClassName: nginx
-            annotations:
-              nginx.ingress.kubernetes.io/rewrite-target: /$2
-              nginx.ingress.kubernetes.io/use-regex: "true"
-            
-            # USE THIS EXPLICIT FORMAT:
-            hosts:
-              - host: tapan-gitops-app.eastus2.cloudapp.azure.com
-                paths:
-                  - path: /grafana(/|$)(.*)
-                    pathType: ImplementationSpecific
 
   destination:
     server: https://kubernetes.default.svc
     namespace: monitoring
 
-  ignoreDifferences:
-  - group: apps
-    kind: Deployment
-    jsonPointers:
-    - /spec/template/spec/containers/0/resources
-    - /spec/template/spec/containers/1/resources
-    - /spec/template/spec/containers/2/resources
-  - group: apps
-    kind: DaemonSet
-    jsonPointers:
-    - /spec/template/spec/containers/0/resources
-  - group: monitoring.coreos.com
-    kind: ServiceMonitor
-    jsonPointers:
-    - /spec/endpoints/0/relabelings
-  - group: monitoring.coreos.com
-    kind: Prometheus
-    jsonPointers:
-    - /spec/storage
-    - /spec/resources
-  - group: "*"
-    kind: Secret
-    name: "sh.helm.release.v1.kube-prometheus-stack.v1"
-    jsonPointers:
-    - /data/release
-
   syncPolicy:
     automated:
       prune: true
       selfHeal: true
-      allowEmpty: true
     syncOptions:
       - CreateNamespace=true
       - ServerSideApply=true
