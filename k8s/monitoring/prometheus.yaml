@@ -8,10 +8,7 @@ spec:
   source:
     chart: kube-prometheus-stack
     repoURL: https://prometheus-community.github.io/helm-charts
-    # ------------------------------------
-    # CRITICAL FIX: Downgrade to stable version
-    targetRevision: 66.0.0
-    # ------------------------------------
+    targetRevision: 69.3.0
     helm:
       values: |
         # 1. DISABLE HEAVY COMPONENTS
@@ -22,16 +19,16 @@ spec:
         nodeExporter:
           enabled: false
 
-        # 2. DISABLE WEBHOOKS (Common failure point)
+        # 2. PROMETHEUS FIXES
         prometheusOperator:
           admissionWebhooks:
             enabled: false
             patch:
               enabled: false
         
-        # 3. BASIC RESOURCES
         prometheus:
           prometheusSpec:
+            serviceMonitorSelectorNilUsesHelmValues: false
             resources:
               requests:
                 memory: 256Mi
@@ -39,7 +36,7 @@ spec:
                 memory: 512Mi
             retention: 2d
 
-        # 4. BASIC GRAFANA (No Ingress yet - Let's just get it running)
+        # 3. GRAFANA CONFIGURATION (Env Vars Strategy)
         grafana:
           adminPassword: "admin"
           resources:
@@ -47,12 +44,29 @@ spec:
               memory: 256Mi
             requests:
               memory: 128Mi
+          
+          # USE ENV VARS (Bypasses the "Nil Pointer" crash in Helm)
+          env:
+            GF_SERVER_DOMAIN: "tapan-gitops-app.eastus2.cloudapp.azure.com"
+            GF_SERVER_ROOT_URL: "http://tapan-gitops-app.eastus2.cloudapp.azure.com/grafana"
+            GF_SERVER_SERVE_FROM_SUB_PATH: "true"
+
+          # INGRESS CONFIGURATION
+          ingress:
+            enabled: true
+            ingressClassName: nginx
+            annotations:
+              nginx.ingress.kubernetes.io/rewrite-target: /$2
+              nginx.ingress.kubernetes.io/use-regex: "true"
+            hosts:
+              - tapan-gitops-app.eastus2.cloudapp.azure.com
+            path: /grafana(/|$)(.*)
 
   destination:
     server: https://kubernetes.default.svc
     namespace: monitoring
 
-  # --- CRITICAL IGNORE RULES (Do not remove) ---
+  # --- IGNORE RULES ---
   ignoreDifferences:
   - group: apps
     kind: Deployment
@@ -60,6 +74,10 @@ spec:
     - /spec/template/spec/containers/0/resources
     - /spec/template/spec/containers/1/resources
     - /spec/template/spec/containers/2/resources
+  - group: apps
+    kind: DaemonSet
+    jsonPointers:
+    - /spec/template/spec/containers/0/resources
   - group: monitoring.coreos.com
     kind: ServiceMonitor
     jsonPointers:
@@ -74,7 +92,7 @@ spec:
     name: "sh.helm.release.v1.kube-prometheus-stack.v1"
     jsonPointers:
     - /data/release
-  # ---------------------------------------------
+  # --------------------
 
   syncPolicy:
     automated:
