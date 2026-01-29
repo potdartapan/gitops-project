@@ -19,7 +19,8 @@ spec:
         nodeExporter:
           enabled: false
 
-        # 2. PROMETHEUS OPERATOR CONFIG
+        # 2. PROMETHEUS OPERATOR CONFIG (The Permanent Fix)
+        # Re-enabling webhooks ensures the required tls-secret is created automatically.
         prometheusOperator:
           admissionWebhooks:
             enabled: true
@@ -47,30 +48,33 @@ spec:
             requests:
               memory: 128Mi
           
-          # Env Vars
+          # Env Vars: Configures Grafana to handle the /grafana sub-path.
           env:
             GF_SERVER_DOMAIN: "tapan-gitops-app.eastus2.cloudapp.azure.com"
             GF_SERVER_ROOT_URL: "http://tapan-gitops-app.eastus2.cloudapp.azure.com/grafana"
             GF_SERVER_SERVE_FROM_SUB_PATH: "true"
 
-          # 5. INGRESS CONFIGURATION (The Fix)
+          # 5. INGRESS CONFIGURATION
           ingress:
             enabled: true
             ingressClassName: nginx
             annotations:
+              # Explicitly disabling SSL redirect and rewrites to prevent infinite loops.
               nginx.ingress.kubernetes.io/ssl-redirect: "false"
             
-            # FIXED: "hosts" must be a list of STRINGS, not objects.
+            # FIXED: "hosts" is a list of STRINGS for this chart version.
             hosts:
               - tapan-gitops-app.eastus2.cloudapp.azure.com
 
-            # Path is defined globally for all hosts
+            # Path is defined globally for all hosts to match the legacy Helm standard.
             path: /grafana
 
   destination:
     server: https://kubernetes.default.svc
     namespace: monitoring
 
+  # --- IGNORE RULES ---
+  # These rules prevent Argo CD from flagging dynamic cluster-managed changes as OutOfSync.
   ignoreDifferences:
   - group: admissionregistration.k8s.io
     kind: MutatingWebhookConfiguration
@@ -78,11 +82,13 @@ spec:
     - /webhooks/0/clientConfig/caBundle
     - /webhooks/1/clientConfig/caBundle
     - /webhooks/2/clientConfig/caBundle
+    - /webhooks/0/namespaceSelector
   - group: admissionregistration.k8s.io
     kind: ValidatingWebhookConfiguration
     jsonPointers:
     - /webhooks/0/clientConfig/caBundle
     - /webhooks/1/clientConfig/caBundle
+    - /webhooks/0/namespaceSelector
   - group: apps
     kind: Deployment
     jsonPointers:
