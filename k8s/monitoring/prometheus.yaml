@@ -8,7 +8,7 @@ spec:
   source:
     chart: kube-prometheus-stack
     repoURL: https://prometheus-community.github.io/helm-charts
-    targetRevision: 69.3.0
+    targetRevision: 69.3.0  # We can safely use the latest version now
     helm:
       values: |
         # 1. DISABLE HEAVY COMPONENTS
@@ -19,13 +19,17 @@ spec:
         nodeExporter:
           enabled: false
 
-        # 2. PROMETHEUS FIXES
+        # 2. PROMETHEUS OPERATOR CONFIG (The Permanent Fix)
         prometheusOperator:
+          # Enable Webhooks so the "tls-secret" is created automatically
           admissionWebhooks:
-            enabled: false
+            enabled: true
             patch:
-              enabled: false
+              enabled: true
+            # "Ignore" prevents conflicts from blocking your deployments
+            failurePolicy: Ignore
         
+        # 3. PROMETHEUS RESOURCES
         prometheus:
           prometheusSpec:
             serviceMonitorSelectorNilUsesHelmValues: false
@@ -36,7 +40,7 @@ spec:
                 memory: 512Mi
             retention: 2d
 
-        # 3. GRAFANA CONFIGURATION (Env Vars Strategy)
+        # 4. GRAFANA CONFIGURATION
         grafana:
           adminPassword: "admin"
           resources:
@@ -45,13 +49,13 @@ spec:
             requests:
               memory: 128Mi
           
-          # USE ENV VARS (Bypasses the "Nil Pointer" crash in Helm)
+          # Env Vars for Safety
           env:
             GF_SERVER_DOMAIN: "tapan-gitops-app.eastus2.cloudapp.azure.com"
             GF_SERVER_ROOT_URL: "http://tapan-gitops-app.eastus2.cloudapp.azure.com/grafana"
             GF_SERVER_SERVE_FROM_SUB_PATH: "true"
 
-          # INGRESS CONFIGURATION
+          # Ingress
           ingress:
             enabled: true
             ingressClassName: nginx
@@ -66,7 +70,6 @@ spec:
     server: https://kubernetes.default.svc
     namespace: monitoring
 
-  # --- IGNORE RULES ---
   ignoreDifferences:
   - group: apps
     kind: Deployment
@@ -92,7 +95,6 @@ spec:
     name: "sh.helm.release.v1.kube-prometheus-stack.v1"
     jsonPointers:
     - /data/release
-  # --------------------
 
   syncPolicy:
     automated:
