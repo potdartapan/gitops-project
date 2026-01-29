@@ -8,7 +8,10 @@ spec:
   source:
     chart: kube-prometheus-stack
     repoURL: https://prometheus-community.github.io/helm-charts
-    targetRevision: 69.3.0
+    # ------------------------------------
+    # CRITICAL FIX: Downgrade to stable version
+    targetRevision: 66.0.0
+    # ------------------------------------
     helm:
       values: |
         # 1. DISABLE HEAVY COMPONENTS
@@ -19,12 +22,14 @@ spec:
         nodeExporter:
           enabled: false
 
-        # 2. PROMETHEUS OPTIMIZATIONS
+        # 2. DISABLE WEBHOOKS (Common failure point)
         prometheusOperator:
           admissionWebhooks:
             enabled: false
             patch:
               enabled: false
+        
+        # 3. BASIC RESOURCES
         prometheus:
           prometheusSpec:
             resources:
@@ -34,7 +39,7 @@ spec:
                 memory: 512Mi
             retention: 2d
 
-        # 3. BASELINE GRAFANA (No Ingress, No Custom INI)
+        # 4. BASIC GRAFANA (No Ingress yet - Let's just get it running)
         grafana:
           adminPassword: "admin"
           resources:
@@ -47,10 +52,35 @@ spec:
     server: https://kubernetes.default.svc
     namespace: monitoring
 
+  # --- CRITICAL IGNORE RULES (Do not remove) ---
+  ignoreDifferences:
+  - group: apps
+    kind: Deployment
+    jsonPointers:
+    - /spec/template/spec/containers/0/resources
+    - /spec/template/spec/containers/1/resources
+    - /spec/template/spec/containers/2/resources
+  - group: monitoring.coreos.com
+    kind: ServiceMonitor
+    jsonPointers:
+    - /spec/endpoints/0/relabelings
+  - group: monitoring.coreos.com
+    kind: Prometheus
+    jsonPointers:
+    - /spec/storage
+    - /spec/resources
+  - group: "*"
+    kind: Secret
+    name: "sh.helm.release.v1.kube-prometheus-stack.v1"
+    jsonPointers:
+    - /data/release
+  # ---------------------------------------------
+
   syncPolicy:
     automated:
       prune: true
       selfHeal: true
+      allowEmpty: true
     syncOptions:
       - CreateNamespace=true
       - ServerSideApply=true
