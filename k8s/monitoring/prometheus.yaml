@@ -47,7 +47,7 @@ spec:
             requests:
               memory: 128Mi
           
-          # Env Vars: Tell Grafana to expect "/grafana"
+          # Env Vars
           env:
             GF_SERVER_DOMAIN: "tapan-gitops-app.eastus2.cloudapp.azure.com"
             GF_SERVER_ROOT_URL: "http://tapan-gitops-app.eastus2.cloudapp.azure.com/grafana"
@@ -58,22 +58,19 @@ spec:
             enabled: true
             ingressClassName: nginx
             annotations:
-              # CRITICAL FIX 1: Explicitly disable SSL redirect to rule out that cause
               nginx.ingress.kubernetes.io/ssl-redirect: "false"
-              # CRITICAL FIX 2: Removed "rewrite-target" and "use-regex".
-              # We let the full path pass through to Grafana.
             
+            # FIXED: "hosts" must be a list of STRINGS, not objects.
             hosts:
-              - host: tapan-gitops-app.eastus2.cloudapp.azure.com
-                paths:
-                  - path: /grafana
-                    pathType: Prefix
+              - tapan-gitops-app.eastus2.cloudapp.azure.com
+
+            # Path is defined globally for all hosts
+            path: /grafana
 
   destination:
     server: https://kubernetes.default.svc
     namespace: monitoring
 
-  # --- IGNORE RULES ---
   ignoreDifferences:
   - group: apps
     kind: Deployment
@@ -99,7 +96,6 @@ spec:
     name: "sh.helm.release.v1.kube-prometheus-stack.v1"
     jsonPointers:
     - /data/release
-  # --------------------
 
   syncPolicy:
     automated:
