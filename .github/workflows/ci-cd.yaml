@@ -37,9 +37,25 @@ jobs:
         with:
           name: pylint-report
           path: pylint_report.txt
-  build-and-update-git:
+  trivy-fs-scan:
     runs-on: ubuntu-latest
     needs: pylint
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Scan repo using trivy
+        uses: aquasecurity/trivy-action@master
+        with: 
+          scan-tpye: 'fs'
+          ignore-unfixed: true
+          format: table
+          exit-code: '1'
+          severity: 'CRITICAL,HIGH'
+
+  build-and-update-git:
+    runs-on: ubuntu-latest
+    needs: trivy-fs-scan
     permissions:
       contents: write # REQUIRED: Allows the Action to push commits to your repo
 
