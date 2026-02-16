@@ -50,8 +50,15 @@ jobs:
           scan-tpye: 'fs'
           ignore-unfixed: true
           format: table
+          output: 'trivy-status.txt'
           exit-code: '1'
           severity: 'CRITICAL,HIGH'
+      - name: Upload trivy artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: trivy-status
+          path: trivy-status.txt
 
   build-and-update-git:
     runs-on: ubuntu-latest
