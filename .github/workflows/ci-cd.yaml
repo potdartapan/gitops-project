@@ -83,7 +83,7 @@ jobs:
 
   build-and-update-git:
     runs-on: ubuntu-latest
-    needs: trivy-fs-scan
+    needs: sonarqube
     permissions:
       contents: write # REQUIRED: Allows the Action to push commits to your repo
 
