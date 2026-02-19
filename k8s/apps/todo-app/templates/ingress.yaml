@@ -4,7 +4,6 @@ metadata:
   name: {{ .Values.appName }}-ingress
   annotations:
     kubernetes.io/ingress.class: nginx
-    # 1. CRITICAL FIX: Stops the infinite redirect loop
     nginx.ingress.kubernetes.io/ssl-redirect: "false"
 spec:
   rules:
