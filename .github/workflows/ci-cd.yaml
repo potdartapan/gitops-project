@@ -4,7 +4,7 @@ on:
   push:
     branches: [ "master" ]
     paths:
-      - 'app/**'        # Only trigger if the python code changes
+      - 'app/main.py'        # Only trigger if the python code changes
       - 'app/Dockerfile' # Explicitly include Dockerfile (if it's inside app/)
       - 'app/requirements.txt'
   workflow_dispatch:
