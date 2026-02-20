@@ -1,24 +1,22 @@
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: postgres
+  name: redis
   namespace: argocd
 spec:
   project: default
   source:
     repoURL: registry-1.docker.io/bitnamicharts
-    chart: postgresql
-    targetRevision: 18.2.0
+    chart: redis
+    targetRevision: 20.1.2 # Pinning a stable version
     helm:
       values: |
+        architecture: standalone
         auth:
-          postgresPassword: "mysecretpassword"
-          database: "tododb"
-        primary:
-          initdb:
-            scripts:
-              01-init-analytics.sql: |
-                CREATE DATABASE analytics_db;
+          enabled: false
+        master:
+          persistence:
+            enabled: false
   destination:
     server: https://kubernetes.default.svc
     namespace: default

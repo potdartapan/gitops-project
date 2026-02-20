@@ -1,0 +1,40 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Rollout
+metadata:
+  name: analytics-worker
+  namespace: default
+spec:
+  replicas: 2 # Let's run 2 copies of your Python script for high availability
+  selector:
+    matchLabels:
+      app: analytics-worker
+  strategy:
+    canary:
+      steps:
+      - setWeight: 20
+      # This pauses the rollout indefinitely until you manually promote it via the Argo UI or CLI
+      - pause: {} 
+      - setWeight: 50
+      # Pauses for exactly 1 hour before automatically finishing the rollout
+      - pause: {duration: 1h} 
+  template:
+    metadata:
+      labels:
+        app: analytics-worker
+    spec:
+      containers:
+      - name: python-worker
+        # You will replace this with your actual Docker image registry URL later
+        image: your-dockerhub-username/analytics-worker:v1.0.0
+        # These environment variables match the exact variables we used in your Python script!
+        env:
+        - name: REDIS_HOST
+          value: "redis-master"
+        - name: DB_HOST
+          value: "postgres-postgresql"
+        - name: DB_USER
+          value: "postgres"
+        - name: DB_PASSWORD
+          value: "mysecretpassword"
+        - name: DB_NAME
+          value: "analytics_db"
