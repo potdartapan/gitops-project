@@ -85,7 +85,7 @@ jobs:
 
   build-and-update-git:
     runs-on: ubuntu-latest
-    needs: sonarqube
+#    needs: sonarqube
     permissions:
       contents: write 
 
