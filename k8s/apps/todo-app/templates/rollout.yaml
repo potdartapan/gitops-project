@@ -30,7 +30,6 @@ spec:
         app: {{ .Values.appName }}
     spec:
       containers:
-      env:
       - name: {{ .Values.appName }}
         image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
         ports:
@@ -39,7 +38,8 @@ spec:
           requests:
             cpu: 100m
             memory: 128Mi
-      - name: DB_HOST
-        value: {{ .Values.env.DB_HOST | quote }}
-      - name: REDIS_HOST
-        value: {{ .Values.env.REDIS_HOST | quote }}
+        env:
+        - name: DB_HOST
+          value: {{ .Values.env.DB_HOST | quote }}
+        - name: REDIS_HOST
+          value: {{ .Values.env.REDIS_HOST | quote }}
