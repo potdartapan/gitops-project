@@ -4,7 +4,7 @@ on:
   push:
     branches: [ "master" ]
     paths:
-      - 'apps/analytics-worker/**' # ✅ Changed path
+      - 'app/analytics-worker/**' # ✅ Changed path
   workflow_dispatch:
 
 jobs:
@@ -24,12 +24,12 @@ jobs:
           python -m pip install --upgrade pip
           pip install pylint
           # ✅ Pointed to the new requirements file
-          pip install -r apps/analytics-worker/requirements.txt
+          pip install -r app/analytics-worker/requirements.txt
 
       - name: Run Pylint
         run: |
           # ✅ Pointed to the new script
-          pylint apps/analytics-worker/*.py --fail-under=7.0 >pylint_report.txt
+          pylint app/analytics-worker/*.py --fail-under=7.0 >pylint_report.txt
 
       - name: Upload Pylint Report
         if: always()
@@ -121,7 +121,7 @@ jobs:
           
           if [[ -n $(git status -s) ]]; then
             # ✅ Add the specific rollout file
-            git add apps/analytics-worker/rollout.yaml
+            git add app/analytics-worker/rollout.yaml
             git commit -m "Update analytics-worker image to ${{ github.sha }}"
             git push
           else
