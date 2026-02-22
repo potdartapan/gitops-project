@@ -43,3 +43,5 @@ spec:
           value: {{ .Values.env.DB_HOST | quote }}
         - name: REDIS_HOST
           value: {{ .Values.env.REDIS_HOST | quote }}
+        - name: PYTHONBUFFERED
+          value: "1"
