@@ -8,3 +8,7 @@ service:
   type: ClusterIP
   port: 80
   targetPort: 3000
+
+env:
+  DB_HOST: "postgres-postgresql"
+  REDIS_HOST: "redis-master"
