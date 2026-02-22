@@ -1,3 +1,4 @@
+appName: "todo-app"
 replicaCount: 1
 image:
   repository: potdartapan/todo-app # Your DockerHub Username
