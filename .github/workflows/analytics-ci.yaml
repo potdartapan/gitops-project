@@ -121,7 +121,7 @@ jobs:
           
           if [[ -n $(git status -s) ]]; then
             # ✅ Add the specific rollout file
-            git add k8s/app/analytics-worker/rollout.yaml
+            git add k8s/apps/analytics-worker/rollout.yaml
             git commit -m "Update analytics-worker image to ${{ github.sha }}"
             git push
           else
