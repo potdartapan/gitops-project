@@ -45,3 +45,12 @@ spec:
           value: {{ .Values.env.REDIS_HOST | quote }}
         - name: PYTHONBUFFERED
           value: "1"
+        - name: DB_USER
+          value: "postgres"
+        - name: DB_NAME
+          value: "postgres"
+        - name: DB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: postgres-postgresql
+              key: postgres-password
