@@ -3,12 +3,11 @@ replicaCount: 1
 image:
   repository: potdartapan/todo-app # Your DockerHub Username
   pullPolicy: Always
-  tag: "eabc896dcb92025fffdcd921f0affaad683ce01e" # Will be overridden by GitHub Actions
+  tag: "31dc70d5665f13922f153cb70d812c34f67b6e46" # Will be overridden by GitHub Actions
 service:
   type: ClusterIP
   port: 80
   targetPort: 3000
-
 env:
   DB_HOST: "postgres-postgresql"
   REDIS_HOST: "redis-master"
