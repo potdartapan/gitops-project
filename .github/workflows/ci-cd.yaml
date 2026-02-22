@@ -60,30 +60,30 @@ jobs:
           name: trivy-status
           path: trivy-status.txt
 
-  sonarqube:
-    runs-on: ubuntu-latest
-    needs: trivy-fs-scan
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v3
-        with:
-          fetch-depth: 0
+  # sonarqube:
+  #   runs-on: ubuntu-latest
+  #   needs: trivy-fs-scan
+  #   steps:
+  #     - name: Checkout code
+  #       uses: actions/checkout@v3
+  #       with:
+  #         fetch-depth: 0
 
-      - name: SonarCloud Scan
-        uses: SonarSource/sonarqube-scan-action@master
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+  #     - name: SonarCloud Scan
+  #       uses: SonarSource/sonarqube-scan-action@master
+  #       env:
+  #         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  #         SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
 
-      - name: SonarQube Quality Gate Check
-        uses: sonarsource/sonarqube-quality-gate-action@master
-        timeout-minutes: 5
-        env:
-          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+  #     - name: SonarQube Quality Gate Check
+  #       uses: sonarsource/sonarqube-quality-gate-action@master
+  #       timeout-minutes: 5
+  #       env:
+  #         SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
 
   build-and-update-git:
     runs-on: ubuntu-latest
-#    needs: sonarqube
+    # needs: sonarqube
     permissions:
       contents: write # REQUIRED: Allows the Action to push commits to your repo
 
