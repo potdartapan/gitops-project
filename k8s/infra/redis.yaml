@@ -11,6 +11,8 @@ spec:
     targetRevision: 20.1.2 # Pinning a stable version
     helm:
       values: |
+        image:
+          tag: "7.4.0"
         architecture: standalone
         auth:
           enabled: false
