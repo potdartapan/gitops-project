@@ -112,7 +112,7 @@ jobs:
         uses: mikefarah/yq@master
         with:
           # This updates the image URL inside standard Kubernetes nested YAML
-          cmd: yq -i '.spec.template.spec.containers[0].image = "${{ secrets.DOCKERHUB_USERNAME }}/analytics-worker:${{ github.sha }}"' 'apps/analytics-worker/rollout.yaml'
+          cmd: yq -i '.spec.template.spec.containers[0].image = "${{ secrets.DOCKERHUB_USERNAME }}/analytics-worker:${{ github.sha }}"' 'app/analytics-worker/rollout.yaml'
 
       - name: Commit and Push Changes
         run: |
