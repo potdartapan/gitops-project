@@ -4,14 +4,6 @@ resource "azurerm_resource_group" "rg" {
   location = var.location
 }
 
-# 2. Random String
-# Azure requires globally unique names for ACR. This adds a random suffix (e.g., devopsacr9x8y)
-resource "random_string" "suffix" {
-  length  = 6
-  special = false
-  upper   = false
-}
-
 # 4. Azure Kubernetes Service (AKS)
 resource "azurerm_kubernetes_cluster" "aks" {
   name                = var.cluster_name

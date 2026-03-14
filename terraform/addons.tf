@@ -8,8 +8,7 @@ resource "helm_release" "nginx_ingress" {
   version          = "4.8.3"
   depends_on       = [azurerm_kubernetes_cluster.aks]
 
-  # ERROR WAS HERE: Removed "set = [" and "]"
-  # FIX: Use repeated 'set' blocks
+
   set {
     name  = "controller.service.annotations.service\\.beta\\.kubernetes\\.io/azure-load-balancer-health-probe-request-path"
     value = "/healthz"
