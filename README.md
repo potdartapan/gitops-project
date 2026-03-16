@@ -1,142 +1,133 @@
-# DevOps Portfolio Project: GitOps with ArgoCD, AKS, and GitHub Actions
+# 🚀 Enterprise GitOps & Event-Driven Architecture on AKS
 
-This project demonstrates a robust, production-grade **DevOps CI/CD Pipeline** leveraging **GitOps principles**. It automates the deployment of a Python FastAPI application to **Azure Kubernetes Service (AKS)**, orchestrated by **ArgoCD** and supported by infrastructure provisioned via **Terraform**.
+This repository contains the infrastructure and application code for a cloud-native, event-driven task management system. The project demonstrates enterprise-grade DevOps practices, including Infrastructure as Code (IaC), GitOps deployment strategies, progressive delivery, and decoupled microservice communication.
 
-## 🏗 Architecture & Workflow
+## 🏗️ 1. High-Level Architecture (The Business View)
 
-The following diagram illustrates the complete DevOps workflow, from code commit to production deployment.
+The application is decoupled into independent frontend and backend microservices. To guarantee high performance and fault tolerance, synchronous database writes are separated from asynchronous background processing using an event-driven stream.
 
 ```mermaid
 graph TD
-    %% Define Nodes
-    Dev[👤 Developer]
-    Git["📂 GitHub Repository<br/>(Source Code & Config)"]
-    TF["🏗️ Terraform<br/>(Infrastructure as Code)"]
+    %% High-Level System Architecture
+    
+    User([🌐 End User]) -->|Web Browser| AzureLB[Azure Public Load Balancer]
+    
+    subgraph "Azure Kubernetes Service (AKS)"
+        AzureLB -->|HTTP Traffic| Frontend[🖥️ Frontend UI]
+        
+        Frontend -->|REST API Calls| Backend(⚙️ Python Backend API)
+        
+        Backend -->|Saves Persistent Data| Postgres[(PostgreSQL Vault)]
+        Backend -->|Publishes Task Events| Redis[(Redis Event Stream)]
+    end
+```
 
-    subgraph "CI Pipeline (GitHub Actions)"
-        CI_Build[🔨 Build & Test]
-        CI_Push[🐳 Push Image]
-        CI_Update[📝 Update Helm Manifest]
+## ☁️ 2. Cloud Infrastructure (The Terraform View)
+The foundational infrastructure is provisioned on Microsoft Azure using Terraform. State is securely managed remotely to prevent team conflicts. Once the hardware is provisioned, Terraform seamlessly bootstraps the cluster with the required GitOps controllers before handing over deployment authority.
+
+```mermaid
+graph TD
+    subgraph Local["Local Environment"]
+        Terminal([💻 Ubuntu Terminal]) -->|terraform apply| TF[⚙️ Terraform Core]
     end
 
-    DH[("Docker Hub<br/>Container Registry")]
-
-    subgraph "Azure Cloud"
-        AKS["☁️ Azure Kubernetes Service<br/>(AKS Cluster)"]
-        subgraph "GitOps Controller"
-            ArgoCD[🐙 Argo CD]
+    subgraph Azure["Azure Cloud Infrastructure"]
+        TF -->|1. State Lock & Sync| Blob[🗄️ Azure Blob Storage: tfstate]
+        
+        TF -->|2. Provisions Hardware| AKS[☸️ Azure Kubernetes Service]
+        AKS -->|Auto-provisions| ALB[⚖️ Azure Public Load Balancer]
+        
+        subgraph Bootstrapped["AKS Base Software (Bootstrapped by TF)"]
+            TF -.->|3. Helm Provider| Nginx[🚦 NGINX Ingress]
+            Nginx -.->|Then| ArgoCD[🐙 Argo CD]
+            ArgoCD -.->|Then| Rollouts[🌊 Argo Rollouts]
+            Rollouts -.->|4. Kubectl Provider| RootApp[📄 root-app.yaml]
         end
-        App["🚀 Todo App<br/>(Running Pods)"]
     end
 
-    %% Flows
-    Dev -->|1. git push| Git
-
-    %% Infrastructure Flow
-    TF -->|Provision/Manage| AKS
-
-    %% CI Flow
-    Git -->|Trigger| CI_Build
-    CI_Build --> CI_Push
-    CI_Push -->|Store Image| DH
-    CI_Push --> CI_Update
-    CI_Update -->|Commit New Image Tag| Git
-
-    %% CD Flow
-    ArgoCD -->|Monitor/Watch| Git
-    ArgoCD -->|Detect Drift & Sync| AKS
-    AKS -->|Pull Image| DH
-
-    %% Styling
-    style Dev fill:#f9f,stroke:#333,stroke-width:2px
-    style Git fill:#24292e,stroke:#fff,color:#fff
-    style TF fill:#7b42bc,stroke:#fff,color:#fff
-    style ArgoCD fill:#ef7b4d,stroke:#fff,color:#fff
-    style AKS fill:#0078d4,stroke:#fff,color:#fff
-    style DH fill:#0db7ed,stroke:#fff,color:#fff
+    subgraph External["External Registries"]
+        AKS -.->|Pulls Base Images| DockerHub[🐳 Docker Hub]
+        RootApp -.->|Syncs via GitOps| GitHub[🐈‍⬛ GitHub Repository]
+    end
 ```
+## 🔄 3. CI/CD & Progressive Delivery (The GitOps View)
+To eliminate manual deployment errors, this project utilizes a strict GitOps workflow. Code changes trigger parallel GitHub Actions pipelines that lint, test, and build the artifacts. Argo CD detects repository changes and triggers Argo Rollouts to execute safe, progressive Canary deployments in the cluster.
 
-## 🔄 Workflow Breakdown
+```mermaid 
+flowchart TD
+    %% EVENT TRIGGERS
+    subgraph Triggers ["GitHub Push Events (Triggers)"]
+        PushTF([⚙️ Push to /terraform])
+        PushTodo([🖥️ Push to /todo-app])
+        PushWorker([⚙️ Push to /analytics-worker])
+        
+        %% Align triggers horizontally
+        PushTF ~~~ PushTodo ~~~ PushWorker
+    end
 
-### 1. 👤 Developer
-The workflow begins with the developer.
-- **Action**: Writes code (Python/FastAPI) and defines infrastructure (Terraform) or Kubernetes manifests (Helm).
-- **Process**: Commits changes and pushes them to the `master` branch of the **GitHub Repository**.
+    %% GITHUB ACTIONS PIPELINES
+    subgraph CI ["GitHub Actions (Continuous Integration)"]
+        
+        subgraph TF_Pipe ["1. Infrastructure Pipeline"]
+            TF_Lint[TF Validate & TFLint] --> TF_Plan[Terraform Plan] --> TF_Apply[Terraform Apply]
+        end
 
-### 2. 🏗️ Terraform (Infrastructure as Code)
-Terraform is responsible for provisioning and managing the underlying cloud infrastructure.
-- **Workflow**: `.github/workflows/infra.yaml`
-- **Role**: It creates the **Azure Kubernetes Service (AKS)** cluster, Virtual Networks, and other necessary Azure resources.
-- **Usage**: Run manually via GitHub Actions (`workflow_dispatch`) to bootstrap or update the infrastructure.
+        subgraph Todo_Pipe ["2. Todo App Pipeline"]
+            Todo_Test[Code Lint & PyTest] --> Todo_Build[Build & Push Docker Image] --> Todo_Tag[Update tag via 'yq' & Commit]
+        end
 
-### 3. ⚙️ CI/CD Pipeline (GitHub Actions)
-The Continuous Integration pipeline ensures code quality and prepares the deployment artifact.
-- **Workflow**: `.github/workflows/ci-cd.yaml`
-- **Trigger**: Automatic on push to `master`.
-- **Steps**:
-    1.  **Build**: Creates a Docker container image from the source code.
-    2.  **Push**: Uploads the Docker image to **Docker Hub** with a unique tag (Commit SHA).
-    3.  **Update Manifest**: The pipeline modifies the Helm Chart values (`k8s/todo-app/values.yaml`) in the Git repository to reference the new image tag. This "config change" triggers the GitOps process.
+        subgraph Worker_Pipe ["3. Analytics Worker Pipeline"]
+            Worker_Test[Code Lint & PyTest] --> Worker_Build[Build & Push Docker Image] --> Worker_Tag[Update tag via 'yq' & Commit]
+        end
+        
+        %% Force horizontal alignment of the top boxes
+        TF_Lint ~~~ Todo_Test ~~~ Worker_Test
+    end
 
-### 4. 🐙 Argo CD (GitOps Operator)
-Argo CD acts as the continuous delivery mechanism, adhering to GitOps principles.
-- **Role**: Runs inside the AKS cluster and constantly monitors the `k8s/` directory in the GitHub repository.
-- **Action**: When the CI pipeline commits a change to the Helm values (e.g., a new image tag), Argo CD detects a "drift" between the desired state (Git) and the live state (Cluster).
-- **Sync**: It automatically synchronizes the cluster state by applying the changes, causing AKS to deploy the new application version.
+    %% CONNECTIONS: TRIGGERS TO PIPELINES
+    PushTF --> TF_Lint
+    PushTodo --> Todo_Test
+    PushWorker --> Worker_Test
 
-### 5. ☁️ AKS Cluster (Runtime Environment)
-The Azure Kubernetes Service is where the application lives.
-- **Role**: Orchestrates the containerized application.
-- **Action**: Upon instruction from Argo CD, Kubernetes pulls the new Docker image from **Docker Hub** and performs a rolling update of the **Todo App** pods, ensuring zero-downtime deployment.
+    %% DEPLOYMENT & GITOPS FLOW
+    subgraph CD ["Deployment & GitOps"]
+        Repo[🐈‍⬛ GitHub Manifests Repo]
+        Argo[🐙 Argo CD]
+        Rollouts[🌊 Argo Rollouts]
+        
+        Repo -.->|Auto-detects changes| Argo
+        Argo ===>|Syncs to AKS| Rollouts
+    end
+
+    %% TARGET PLATFORM
+    Azure[(Azure Infrastructure)]
+
+    %% CONNECTIONS: CI TO CD
+    Todo_Tag ===>|Commits new YAML| Repo
+    Worker_Tag ===>|Commits new YAML| Repo
+    
+    %% FINAL DEPLOYMENT CONNECTIONS
+    TF_Apply ===>|Provisions directly| Azure
+    Rollouts ===>|Executes Canary Strategy| Azure
+```
+## 🛠️ Technology Stack
+* **Cloud Provider:** Microsoft Azure
+* **Infrastructure as Code:** Terraform
+* **Container Orchestration:** Kubernetes (AKS)
+* **GitOps & Delivery:** Argo CD, Argo Rollouts
+* **Ingress & Routing:** NGINX Ingress Controller
+* **Application Layer:** Python (FastAPI)
+* **Databases:** PostgreSQL, Redis Streams
+* **CI/CD:** GitHub Actions
 
 ---
 
-## 🛠 Tech Stack
+## 📂 Repository Structure
 
-| Component | Tool | Description |
-|-----------|------|-------------|
-| **Cloud Provider** | Azure (AKS) | Managed Kubernetes Cluster |
-| **IaC** | Terraform | Infrastructure provisioning |
-| **CI System** | GitHub Actions | Automated build and manifest updates |
-| **CD / GitOps** | ArgoCD | Declarative continuous delivery |
-| **Containerization** | Docker | Application runtime environment |
-| **Registry** | Docker Hub | Container image storage |
-| **Application** | Python FastAPI | REST API Backend |
-| **Templating** | Helm | Kubernetes package manager |
-
----
-
-## 🚀 Getting Started
-
-### Prerequisites
-*   **Azure Subscription**
-*   **GitHub Account**
-*   **Docker Hub Account**
-*   **Terraform** & **Azure CLI** (for local testing)
-
-### Setup & Deployment
-
-1.  **Configure Secrets**: Set up the following Repository Secrets in GitHub:
-    *   `AZURE_CLIENT_ID`, `AZURE_CLIENT_SECRET`, `AZURE_SUBSCRIPTION_ID`, `AZURE_TENANT_ID`
-    *   `DOCKERHUB_USERNAME`, `DOCKERHUB_TOKEN`
-
-2.  **Provision Infrastructure**:
-    *   Go to **GitHub Actions** tab.
-    *   Select **Infrastructure Manager** workflow.
-    *   Run workflow to provision AKS and bootstrap Argo CD.
-
-3.  **Deploy Application**:
-    *   Push a change to the `app/` directory.
-    *   The **CI/CD** workflow will trigger, build the image, and update the manifests.
-    *   **Argo CD** will automatically deploy the new version to your cluster.
-
-## 💻 Local Development
-
-To run the application locally for development:
-
-```bash
-cd app
-docker-compose up --build
-```
-
-Access the API documentation at: `http://localhost:8000/docs`
+```text
+├── .github/workflows/   # CI/CD Pipelines (Terraform, App, Worker)
+├── app/                 # Python source code (Todo API & Analytics Worker)
+├── k8s/                 # Kubernetes Manifests (ArgoCD apps, Ingress, Rollouts)
+├── terraform/           # Infrastructure as Code (AKS, Networking, State)
+├── docs/                # Extended architectural documentation
+└── README.md
