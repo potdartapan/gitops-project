@@ -1,8 +1,8 @@
-# 🚀 Enterprise GitOps & Event-Driven Architecture on AKS
+# Enterprise GitOps & Event-Driven Architecture on AKS
 
 This repository contains the infrastructure and application code for a cloud-native, event-driven task management system. The project demonstrates enterprise-grade DevOps practices, including Infrastructure as Code (IaC), GitOps deployment strategies, progressive delivery, and decoupled microservice communication.
 
-## 🏗️ 1. High-Level Architecture (The Business View)
+## 1. High-Level Architecture
 
 The application is decoupled into independent frontend and backend microservices. To guarantee high performance and fault tolerance, synchronous database writes are separated from asynchronous background processing using an event-driven stream.
 
@@ -22,7 +22,7 @@ graph TD
     end
 ```
 
-## ☁️ 2. Cloud Infrastructure (The Terraform View)
+## 2. Cloud Infrastructure (Terraform)
 The foundational infrastructure is provisioned on Microsoft Azure using Terraform. State is securely managed remotely to prevent team conflicts. Once the hardware is provisioned, Terraform seamlessly bootstraps the cluster with the required GitOps controllers before handing over deployment authority.
 
 ```mermaid
@@ -39,8 +39,8 @@ graph TD
         
         subgraph Bootstrapped["AKS Base Software (Bootstrapped by TF)"]
             TF -.->|3. Helm Provider| Nginx[🚦 NGINX Ingress]
-            Nginx -.->|Then| ArgoCD[🐙 Argo CD]
-            ArgoCD -.->|Then| Rollouts[🌊 Argo Rollouts]
+            Nginx -.-> ArgoCD[🐙 Argo CD]
+            ArgoCD -.-> Rollouts[🌊 Argo Rollouts]
             Rollouts -.->|4. Kubectl Provider| RootApp[📄 root-app.yaml]
         end
     end
