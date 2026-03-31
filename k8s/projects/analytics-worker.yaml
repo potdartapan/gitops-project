@@ -1,15 +1,20 @@
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: todo-infra
+  name: analytics-worker
   namespace: argocd
+  finalizers:
+  - resources-finalizer.argocd.argoproj.io
 spec:
   project: default
   source:
     repoURL: https://github.com/potdartapan/gitops-project.git
     targetRevision: HEAD
-    # CRITICAL UPDATE: Point to where postgres.yaml lives
-    path: k8s/infra 
+    path: k8s/apps/analytics-worker
+    helm:
+      parameters:
+        - name: image.repository
+          value: potdartapan/analytics-worker
   destination:
     server: https://kubernetes.default.svc
     namespace: default
@@ -17,3 +22,5 @@ spec:
     automated:
       prune: true
       selfHeal: true
+    syncOptions:
+      - CreateNamespace=true

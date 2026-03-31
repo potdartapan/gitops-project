@@ -1,0 +1,20 @@
+appName: "analytics-worker"
+replicaCount: 2
+
+image:
+  repository: potdartapan/analytics-worker
+  pullPolicy: Always
+  tag: "94795ad66211e16a0510a96ca6be4da9d6b6cfca" # Updated by GitHub Actions CI
+
+resources:
+  requests:
+    cpu: 50m
+    memory: 64Mi
+  limits:
+    memory: 128Mi
+
+env:
+  REDIS_HOST: "redis-master"
+  DB_HOST: "postgres-postgresql"
+  DB_USER: "postgres"
+  DB_NAME: "analytics_db"
