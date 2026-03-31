@@ -45,6 +45,17 @@ spec:
                 target_matchers:
                   - severity = "warning"
                 equal: ['alertname']
+        # Disable control plane scrapers — AKS manages these components and
+        # does not expose their metrics endpoints to the user.
+        kubeControllerManager:
+          enabled: false
+        kubeScheduler:
+          enabled: false
+        kubeProxy:
+          enabled: false
+        kubeEtcd:
+          enabled: false
+
         kubeStateMetrics:
           enabled: true
         kube-state-metrics:
