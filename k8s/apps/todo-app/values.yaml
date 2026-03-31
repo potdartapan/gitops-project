@@ -3,7 +3,7 @@ replicaCount: 1
 image:
   repository: potdartapan/todo-app # Your DockerHub Username
   pullPolicy: Always
-  tag: "8e6ea5b6bf225fa09667ee7ea0fa2c86cc65a206" # Will be overridden by GitHub Actions
+  tag: "733a2fa262e19a1d212d0f927f6df838e78ac7be" # Will be overridden by GitHub Actions
 service:
   type: ClusterIP
   port: 80
