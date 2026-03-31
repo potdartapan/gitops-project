@@ -29,10 +29,10 @@ jobs:
     
     steps:
       - name: Checkout Code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v2
+        uses: hashicorp/setup-terraform@v3
 
       # ---------------------------------------------------------
       # NEW STEP: PRE-DESTROY CLEANUP (Fixed)
@@ -84,11 +84,21 @@ jobs:
       # ---------------------------------------------------------
       # STANDARD TERRAFORM EXECUTION
       # ---------------------------------------------------------
+      - name: Terraform Format Check
+        working-directory: ./terraform
+        run: terraform fmt -check -recursive
+
+      - name: Terraform Init
+        working-directory: ./terraform
+        run: terraform init
+
+      - name: Terraform Validate
+        working-directory: ./terraform
+        run: terraform validate
+
       - name: Terraform Run
         working-directory: ./terraform
-        run: |
-          terraform init
-          terraform ${{ github.event.inputs.action }} -auto-approve
+        run: terraform ${{ github.event.inputs.action }} -auto-approve
 
       # ---------------------------------------------------------
       # POST-APPLY: GET URLS
