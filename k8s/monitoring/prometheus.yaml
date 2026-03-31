@@ -20,11 +20,6 @@ spec:
               memory: 32Mi
             limits:
               memory: 64Mi
-          alertmanagerSpec:
-            # Mount the Discord webhook secret into the alertmanager pod.
-            # The secret is created separately in alertmanager-discord-secret.yaml.
-            secrets:
-              - alertmanager-discord
           config:
             route:
               group_by: ['alertname', 'severity']
@@ -40,7 +35,7 @@ spec:
             receivers:
               - name: discord
                 discord_configs:
-                  - webhook_url_file: '/etc/alertmanager/secrets/alertmanager-discord/webhook-url'
+                  - webhook_url: 'https://discordapp.com/api/webhooks/1488566541720227951/T2zLWXuCrTJrOA6wLl0EyjcwBZltNY6RZ5aSXkH8WgdmlpWHhQbClVX-wv4PZ9ZeZz08'
                     send_resolved: true
               - name: 'null'
             inhibit_rules:
