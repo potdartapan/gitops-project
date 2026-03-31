@@ -25,7 +25,7 @@ spec:
       containers:
         - name: python-worker
           # You will replace this with your actual Docker image registry URL later
-          image: potdartapan/analytics-worker:71b2a60b51fdc2a3c8bd9bcf5536a29754ffc2c1
+          image: potdartapan/analytics-worker:94795ad66211e16a0510a96ca6be4da9d6b6cfca
           # These environment variables match the exact variables we used in your Python script!
           env:
             - name: REDIS_HOST
