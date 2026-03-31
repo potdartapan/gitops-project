@@ -4,3 +4,4 @@ sqlalchemy
 psycopg2-binary
 pydantic
 redis==5.0.1
+prometheus-fastapi-instrumentator

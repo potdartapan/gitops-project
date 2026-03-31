@@ -2,6 +2,7 @@ import os
 import time
 import redis
 from fastapi import FastAPI, HTTPException, Depends
+from prometheus_fastapi_instrumentator import Instrumentator
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 from sqlalchemy import create_engine, Column, Integer, String, Boolean, text
@@ -90,6 +91,8 @@ class TodoResponse(BaseModel):
 
 # --- STEP 5: API ENDPOINTS ---
 app = FastAPI()
+
+Instrumentator().instrument(app).expose(app)
 
 def get_db():
     db = SessionLocal()

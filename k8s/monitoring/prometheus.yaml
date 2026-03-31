@@ -11,13 +11,63 @@ spec:
     targetRevision: 69.3.0
     helm:
       values: |
-        # 1. DISABLE HEAVY COMPONENTS
+        # 1. COMPONENT ENABLEMENT
         alertmanager:
-          enabled: false
+          enabled: true
+          resources:
+            requests:
+              cpu: 10m
+              memory: 32Mi
+            limits:
+              memory: 64Mi
+          alertmanagerSpec:
+            # Mount the Discord webhook secret into the alertmanager pod.
+            # The secret is created separately in alertmanager-discord-secret.yaml.
+            secrets:
+              - alertmanager-discord
+          config:
+            route:
+              group_by: ['alertname', 'severity']
+              group_wait: 30s
+              group_interval: 5m
+              repeat_interval: 12h
+              receiver: discord
+              routes:
+                # Silence the Watchdog heartbeat alert — it fires constantly by design.
+                - matchers:
+                    - alertname = "Watchdog"
+                  receiver: 'null'
+            receivers:
+              - name: discord
+                discord_configs:
+                  - webhook_url_file: '/etc/alertmanager/secrets/alertmanager-discord/webhook-url'
+                    send_resolved: true
+              - name: 'null'
+            inhibit_rules:
+              # Suppress warning-severity alerts when a critical alert fires for the same issue.
+              - source_matchers:
+                  - severity = "critical"
+                target_matchers:
+                  - severity = "warning"
+                equal: ['alertname']
         kubeStateMetrics:
-          enabled: false
+          enabled: true
+        kube-state-metrics:
+          resources:
+            requests:
+              cpu: 10m
+              memory: 32Mi
+            limits:
+              memory: 64Mi
         nodeExporter:
-          enabled: false
+          enabled: true
+        prometheus-node-exporter:
+          resources:
+            requests:
+              cpu: 10m
+              memory: 32Mi
+            limits:
+              memory: 64Mi
 
         # 2. PROMETHEUS OPERATOR CONFIG (The Permanent Fix)
         # Re-enabling webhooks ensures the required tls-secret is created automatically.
@@ -32,6 +82,7 @@ spec:
         prometheus:
           prometheusSpec:
             serviceMonitorSelectorNilUsesHelmValues: false
+            ruleSelectorNilUsesHelmValues: false
             resources:
               requests:
                 memory: 256Mi
@@ -47,12 +98,40 @@ spec:
               memory: 256Mi
             requests:
               memory: 128Mi
-          
+
           # Env Vars: Configures Grafana to handle the /grafana sub-path.
           env:
             GF_SERVER_DOMAIN: "tapan-gitops-app.eastus2.cloudapp.azure.com"
             GF_SERVER_ROOT_URL: "http://tapan-gitops-app.eastus2.cloudapp.azure.com/grafana"
             GF_SERVER_SERVE_FROM_SUB_PATH: "true"
+
+          # 4a. DASHBOARD PROVIDERS
+          # Adds a "Community" folder in Grafana for gnetId-downloaded dashboards.
+          # The default sidecar-managed folder (for ConfigMap dashboards) is unaffected.
+          dashboardProviders:
+            dashboardproviders.yaml:
+              apiVersion: 1
+              providers:
+              - name: community
+                orgId: 1
+                folder: Community
+                type: file
+                disableDeletion: false
+                editable: true
+                options:
+                  path: /var/lib/grafana/dashboards/community
+
+          # 4b. COMMUNITY DASHBOARDS (downloaded from grafana.com by ID)
+          dashboards:
+            community:
+              node-exporter-full:
+                gnetId: 1860
+                revision: 37
+                datasource: Prometheus
+              kubernetes-cluster:
+                gnetId: 7249
+                revision: 1
+                datasource: Prometheus
 
           # 5. INGRESS CONFIGURATION
           ingress:

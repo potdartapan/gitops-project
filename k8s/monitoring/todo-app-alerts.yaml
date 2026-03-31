@@ -1,0 +1,84 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: todo-app-alerts
+  namespace: monitoring
+spec:
+  groups:
+  - name: todo-app.availability
+    rules:
+    - alert: TodoAppHighErrorRate
+      expr: |
+        sum(rate(http_requests_total{status_code=~"5.."}[5m]))
+        /
+        sum(rate(http_requests_total[5m])) > 0.05
+      for: 5m
+      labels:
+        severity: warning
+      annotations:
+        summary: "Todo App elevated error rate"
+        description: "5xx error rate has been above 5% for 5 minutes. Current value: {{ $value | humanizePercentage }}."
+
+    - alert: TodoAppCriticalErrorRate
+      expr: |
+        sum(rate(http_requests_total{status_code=~"5.."}[5m]))
+        /
+        sum(rate(http_requests_total[5m])) > 0.20
+      for: 5m
+      labels:
+        severity: critical
+      annotations:
+        summary: "Todo App critical error rate"
+        description: "5xx error rate has been above 20% for 5 minutes. Current value: {{ $value | humanizePercentage }}."
+
+  - name: todo-app.latency
+    rules:
+    - alert: TodoAppHighLatency
+      expr: |
+        histogram_quantile(0.99,
+          sum(rate(http_request_duration_seconds_bucket[5m])) by (le)
+        ) > 1
+      for: 10m
+      labels:
+        severity: warning
+      annotations:
+        summary: "Todo App high p99 latency"
+        description: "p99 request latency has been above 1s for 10 minutes. Current value: {{ $value | humanizeDuration }}."
+
+    - alert: TodoAppCriticalLatency
+      expr: |
+        histogram_quantile(0.99,
+          sum(rate(http_request_duration_seconds_bucket[5m])) by (le)
+        ) > 2
+      for: 5m
+      labels:
+        severity: critical
+      annotations:
+        summary: "Todo App critical p99 latency"
+        description: "p99 request latency has been above 2s for 5 minutes. Current value: {{ $value | humanizeDuration }}."
+
+  - name: todo-app.pods
+    rules:
+    - alert: TodoAppPodNotReady
+      expr: |
+        kube_pod_status_ready{namespace="default", condition="true"}
+          * on(pod) group_left(label_app)
+        kube_pod_labels{namespace="default", label_app="todo-app"} == 0
+      for: 5m
+      labels:
+        severity: critical
+      annotations:
+        summary: "Todo App pod not ready"
+        description: "Pod {{ $labels.pod }} has been in a non-ready state for 5 minutes."
+
+    - alert: TodoAppPodCrashLooping
+      expr: |
+        rate(kube_pod_container_status_restarts_total{namespace="default"}[15m])
+          * on(pod) group_left(label_app)
+        kube_pod_labels{namespace="default", label_app="todo-app"} > 0
+      for: 5m
+      labels:
+        severity: critical
+      annotations:
+        summary: "Todo App pod crash-looping"
+        description: "Pod {{ $labels.pod }} container {{ $labels.container }} is restarting frequently."
