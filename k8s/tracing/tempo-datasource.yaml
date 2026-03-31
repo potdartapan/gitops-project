@@ -1,0 +1,30 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: tempo-datasource
+  # Must be in the monitoring namespace — that's where the grafana-sc-datasources
+  # sidecar watches for ConfigMaps with the grafana_datasource label.
+  namespace: monitoring
+  labels:
+    grafana_datasource: "1"
+data:
+  tempo-datasource.yaml: |
+    apiVersion: 1
+    datasources:
+    - name: Tempo
+      type: tempo
+      uid: tempo
+      url: http://tempo.tracing.svc.cluster.local:3100
+      access: proxy
+      jsonData:
+        # Link traces back to Prometheus metrics by service name.
+        tracesToMetrics:
+          datasourceUid: prometheus
+          tags:
+            - key: service.name
+              value: todo-app
+        # Render a node graph showing call relationships between services.
+        nodeGraph:
+          enabled: true
+        search:
+          hide: false

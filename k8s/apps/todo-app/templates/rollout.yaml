@@ -26,6 +26,9 @@ spec:
   # STANDARD POD TEMPLATE (Same as your old Deployment)
   template:
     metadata:
+      annotations:
+        # Tells the OTel Operator to inject the Python SDK into this pod automatically.
+        instrumentation.opentelemetry.io/inject-python: "true"
       labels:
         app: {{ .Values.appName }}
     spec:

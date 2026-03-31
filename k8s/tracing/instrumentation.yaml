@@ -1,0 +1,24 @@
+apiVersion: opentelemetry.io/v1alpha1
+kind: Instrumentation
+metadata:
+  name: python-instrumentation
+  # Must be in the same namespace as the app pods for the operator to inject it.
+  namespace: default
+spec:
+  # All traces are sent to the OTel Collector via OTLP HTTP.
+  exporter:
+    endpoint: http://otel-collector.tracing.svc.cluster.local:4318
+  propagators:
+    - tracecontext
+    - baggage
+  sampler:
+    # 100% of traces captured — reduce this (e.g. "0.1") for high-traffic apps.
+    type: parentbased_traceidratio
+    argument: "1.0"
+  python:
+    env:
+      # Disable log exporting — we only want traces here.
+      - name: OTEL_LOGS_EXPORTER
+        value: none
+      - name: OTEL_PYTHON_LOGGING_AUTO_INSTRUMENTATION_ENABLED
+        value: "false"

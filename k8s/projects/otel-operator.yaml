@@ -1,0 +1,36 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: otel-operator
+  namespace: argocd
+  finalizers:
+  - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    repoURL: https://open-telemetry.github.io/opentelemetry-helm-charts
+    chart: opentelemetry-operator
+    targetRevision: 0.71.3
+    helm:
+      values: |
+        manager:
+          # Use the contrib collector image so all receivers/exporters are available.
+          collectorImage:
+            repository: otel/opentelemetry-collector-contrib
+        # Use self-signed certs instead of cert-manager to avoid an extra dependency.
+        admissionWebhooks:
+          certManager:
+            enabled: false
+          autoGenerateCert:
+            enabled: true
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: opentelemetry-operator
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      # Required because the operator installs CRDs with large annotations.
+      - ServerSideApply=true

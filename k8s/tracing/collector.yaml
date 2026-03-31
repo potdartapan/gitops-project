@@ -1,0 +1,43 @@
+apiVersion: opentelemetry.io/v1alpha1
+kind: OpenTelemetryCollector
+metadata:
+  name: otel
+  namespace: tracing
+spec:
+  # Deployment mode: single collector pod. Use DaemonSet for node-level collection.
+  mode: deployment
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      memory: 128Mi
+  config: |
+    receivers:
+      otlp:
+        protocols:
+          grpc:
+            endpoint: 0.0.0.0:4317
+          http:
+            endpoint: 0.0.0.0:4318
+
+    processors:
+      batch:
+        # Buffer traces for 5s before forwarding to reduce Tempo write load.
+        timeout: 5s
+      memory_limiter:
+        check_interval: 1s
+        limit_mib: 100
+
+    exporters:
+      otlp:
+        endpoint: tempo.tracing.svc.cluster.local:4317
+        tls:
+          insecure: true
+
+    service:
+      pipelines:
+        traces:
+          receivers: [otlp]
+          processors: [memory_limiter, batch]
+          exporters: [otlp]

@@ -1,0 +1,85 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: tempo
+  namespace: argocd
+  finalizers:
+  - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    repoURL: https://grafana.github.io/helm-charts
+    chart: tempo
+    targetRevision: 1.9.0
+    helm:
+      values: |
+        tempo:
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              memory: 512Mi
+          # Full config override so OTLP receivers are explicitly enabled.
+          config: |
+            auth_enabled: false
+
+            server:
+              http_listen_port: 3100
+              grpc_listen_port: 9095
+              log_level: warn
+
+            distributor:
+              receivers:
+                otlp:
+                  protocols:
+                    grpc:
+                      endpoint: 0.0.0.0:4317
+                    http:
+                      endpoint: 0.0.0.0:4318
+
+            ingester:
+              trace_idle_period: 10s
+              max_block_bytes: 1_000_000
+              max_block_duration: 5m
+
+            compactor:
+              compaction:
+                block_retention: 24h
+
+            storage:
+              trace:
+                backend: local
+                wal:
+                  path: /var/tempo/wal
+                local:
+                  path: /var/tempo/blocks
+                pool:
+                  max_workers: 100
+                  queue_depth: 10000
+
+            querier: {}
+            query_frontend: {}
+
+        # Expose OTLP ports on the Service alongside the default HTTP API port.
+        service:
+          type: ClusterIP
+          port: 3100
+          additionalPorts:
+            - name: otlp-grpc
+              port: 4317
+              targetPort: 4317
+              protocol: TCP
+            - name: otlp-http
+              port: 4318
+              targetPort: 4318
+              protocol: TCP
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: tracing
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
